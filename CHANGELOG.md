@@ -3,6 +3,17 @@
 ## [Unreleased]
 
 ### Added
+- `copy_recipe_to_custom`: copy a catalogue recipe into a new custom recipe (keeping its
+  serving size unless another is given) and return the new ID for editing
+- `move_in_meal_plan`: move a planned recipe to another day; it is added to the new day
+  before being removed from the old one, and rolled back if that fails; catalogue or custom
+  recipe is detected from the plan
+- `upload_custom_recipe_image`: set a custom recipe's photo from a local file, ported from
+  vitaliemiron/cookidoo-mcp (Apache-2.0, see NOTICE) and hardened: disabled unless
+  `COOKIDOO_IMAGE_DIRS` is set, path allowlist checked after resolving symlinks, JPEG/PNG/WebP
+  only (checked by content), 10 MB and 50 MP limits, always re-encoded to JPEG without
+  EXIF/GPS metadata, TLS verification on, no Cookidoo credentials sent to Cloudinary
+- Pillow 13 dependency
 - Guided cooking steps in German: settings are written in the notation of the cookidoo.de
   recipe editor (`3 Min./120°C/Linkslauf/Stufe 1`, `Teig kneten/2 Min.`, `Turbo/1 Sek./3x`)
   when `COOKIDOO_LANGUAGE` is German, and a German `create_thermomix_recipe` prompt
@@ -33,6 +44,10 @@
   (pip-audit, gitleaks, insecure-pattern guard, dependency review); CodeQL; Docker image built
   and scanned with Trivy on PRs, pushed with provenance and SBOM on tags; Dependabot.
   All actions pinned by commit SHA with least-privilege permissions
+
+### Fixed
+- `get_meal_plan_week` described and labelled the result as the calendar week containing
+  `day`; Cookidoo returns the 7 days starting at `day`, which is now what it says
 
 ### Changed
 - New tools live in a `tools/` package, one module per group

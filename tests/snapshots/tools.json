@@ -56,6 +56,16 @@
       "openWorldHint": true,
       "params": []
     },
+    "copy_recipe_to_custom": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": [
+        "recipe_id",
+        "servings"
+      ]
+    },
     "create_collection": {
       "readOnlyHint": false,
       "destructiveHint": false,
@@ -193,6 +203,17 @@
         "owned"
       ]
     },
+    "move_in_meal_plan": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": [
+        "from_day",
+        "recipe_id",
+        "to_day"
+      ]
+    },
     "remove_from_collection": {
       "readOnlyHint": false,
       "destructiveHint": true,
@@ -271,6 +292,16 @@
       "openWorldHint": true,
       "params": [
         "recipe_json"
+      ]
+    },
+    "upload_custom_recipe_image": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": true,
+      "params": [
+        "image_path",
+        "recipe_id"
       ]
     }
   },

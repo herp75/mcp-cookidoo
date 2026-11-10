@@ -17,6 +17,14 @@ tobilektri/mcp-cookidoo (MIT)
   Used: the German Thermomix notation of the cookidoo.de recipe editor (labels, units and
   number format) in guided.py.
 
+vitaliemiron/cookidoo-mcp (Apache License 2.0)
+  https://github.com/vitaliemiron/cookidoo-mcp
+  Copyright (c) Alexandre Patelli and Vitalie Miron
+  Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
+  Used: the custom recipe image upload (Cookidoo signature, Cloudinary upload, recipe
+  update) in recipe_images.py, modified as described in that file's header; and the
+  add-then-remove-with-rollback approach of move_in_meal_plan.
+
 Projects used for reference only (no code copied)
 -------------------------------------------------
 - sisques-labs/cookidoo-mcp (GPL-3.0): feature checklist only.

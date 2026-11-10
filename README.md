@@ -32,6 +32,7 @@ cp .env.example .env   # then fill in your Cookidoo credentials
 | `COOKIDOO_COUNTRY` | `fr` | Cookidoo site country code (`fr`, `de`, `gb`, `es`, …) |
 | `COOKIDOO_LANGUAGE` | `fr-FR` | Site language (e.g. `de-DE`); also the language guided-cooking settings are written in |
 | `COOKIDOO_DEVICE` | `TM6` | Thermomix model set on created recipes (`TM5`, `TM6`, `TM7`) |
+| `COOKIDOO_IMAGE_DIRS` | — (upload disabled) | Folders `upload_custom_recipe_image` may read images from, separated by `:` (`;` on Windows) |
 | `COOKIDOO_MCP_TRANSPORT` | `stdio` | `stdio` or `http` (same as `--transport`) |
 | `COOKIDOO_MCP_HOST` | `127.0.0.1` | HTTP bind address. Any non-loopback address requires `COOKIDOO_MCP_TOKEN` |
 | `COOKIDOO_MCP_PORT` | `8000` | HTTP port |
@@ -117,6 +118,8 @@ safety layer on top of your client's approval prompt.
 | `generate_recipe_structure` | read | Validate a new recipe and return its JSON |
 | `upload_custom_recipe` | write | Create a custom recipe from that JSON |
 | `update_custom_recipe` | destructive | Replace an existing custom recipe with that JSON |
+| `copy_recipe_to_custom` | write | Copy a catalogue recipe into a new custom recipe, to adapt it |
+| `upload_custom_recipe_image` | destructive | Set a custom recipe's photo from a local image (see `COOKIDOO_IMAGE_DIRS`) |
 | `delete_custom_recipe` † | destructive | Permanently delete a custom recipe |
 | **Shopping list** | | |
 | `get_shopping_list` | read | Recipes, ingredients and hand-added items, with ticked state and IDs |
@@ -128,8 +131,9 @@ safety layer on top of your client's approval prompt.
 | `remove_shopping_list_items` | destructive | Delete items added by hand |
 | `clear_shopping_list` † | destructive | Empty the whole shopping list |
 | **Meal plan** | | |
-| `get_meal_plan_week` | read | The planned recipes of the week containing a day |
+| `get_meal_plan_week` | read | The planned recipes of the 7 days starting at a day |
 | `add_to_meal_plan` | write | Plan catalogue and/or custom recipes on a day |
+| `move_in_meal_plan` | destructive | Move a planned recipe to another day (rolled back on failure) |
 | `remove_from_meal_plan` | destructive | Remove recipes from a day (the recipes are kept) |
 | **Collections** | | |
 | `list_collections` | read | Your own and followed collections with their recipes (paginated) |
@@ -190,6 +194,12 @@ in the same format, so a recipe keeps its settings and links when edited.
 - TLS certificate verification is always on; secrets are redacted from logs and error messages.
 - Recipe content is untrusted input to the model. Keep your client's approval prompt on for
   write tools.
+- `upload_custom_recipe_image` is the only tool that reads a local file and sends it to the
+  internet. It is off until you set `COOKIDOO_IMAGE_DIRS`: point it at a folder that holds
+  only recipe photos, not your home directory. Files outside it (also through symlinks) and
+  anything but JPEG/PNG/WebP up to 10 MB are refused; images are re-encoded and their
+  metadata (EXIF, GPS location) removed before upload. With Docker, mount that folder
+  read-only (`-v ~/RecipePhotos:/photos:ro -e COOKIDOO_IMAGE_DIRS=/photos`).
 
 See [SECURITY.md](SECURITY.md) for the threat model and how to report a vulnerability.
 

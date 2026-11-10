@@ -10,10 +10,11 @@ import json
 from dataclasses import replace
 from datetime import date
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
-from cookidoo_api import CookidooRequestException, ThermomixMachineType
+from cookidoo_api import CookidooLocalizationConfig, CookidooRequestException, ThermomixMachineType
 from cookidoo_api.types import (
     CookidooAdditionalItem,
     CookidooCalendarDay,
@@ -28,6 +29,7 @@ from cookidoo_api.types import (
     CookidooUserInfo,
 )
 from fastmcp import Client
+from yarl import URL
 
 import server
 from cookidoo_service import CookidooService, CookidooSettings
@@ -111,8 +113,40 @@ class FakeCookidoo:
         return self.devices
 
     # Custom recipes
+    localization = CookidooLocalizationConfig(
+        country_code="gb", language="en-GB", url="https://cookidoo.example/foundation/en-GB"
+    )
+    api_endpoint = URL("https://cookidoo.example")
+    signature_response: object = {"signature": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678"}
+
+    async def _ensure_endpoints(self):
+        pass
+
+    def _path(self, name):
+        return {"customer-recipes:recipe-create": "created-recipes/{language}"}[name]
+
+    async def _request_json(self, method, url, operation, **kwargs):
+        self._call("_request_json", method, str(url), kwargs)
+        return self.signature_response
+
+    async def _patch_custom_recipe(self, recipe_id, payload, operation):
+        self._call("_patch_custom_recipe", recipe_id, payload)
+
     async def remove_custom_recipe(self, custom_recipe_id):
         self._call("remove_custom_recipe", custom_recipe_id)
+
+    async def get_recipe_details(self, id):
+        self._call("get_recipe_details", id)
+        return SimpleNamespace(serving_size=4)
+
+    async def add_custom_recipe_from(self, recipeId, servingSize):
+        self._call("add_custom_recipe_from", recipeId, servingSize)
+        return SimpleNamespace(
+            id="01TESTCOPY0000000000000001",
+            name="Test Tomato Soup (copy)",
+            serving_size=servingSize,
+            url="https://cookidoo.example/created-recipes/en-GB/01TESTCOPY0000000000000001",
+        )
 
     # Shopping list
     async def get_shopping_list_recipes(self):
