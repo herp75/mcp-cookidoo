@@ -69,7 +69,7 @@ async def test_generate_recipe_structure_round_trips_to_upload(service):
 
     text = await call("upload_custom_recipe", recipe_json=generated)
     assert "01ABC" in text
-    service.create_custom_recipe.assert_awaited_once_with(CustomRecipe(**RECIPE))
+    service.create_custom_recipe.assert_awaited_once_with(CustomRecipe(**RECIPE), "TM6")
 
 
 async def test_generate_keeps_commas_and_accepts_lists(service):
@@ -294,7 +294,9 @@ def test_settings_from_env(monkeypatch):
     monkeypatch.setenv("COOKIDOO_EMAIL", "a@b.c")
     monkeypatch.setenv("COOKIDOO_PASSWORD", "x")
     monkeypatch.setenv("COOKIDOO_DEVICE", "tm7")
-    assert load_cookidoo_settings().device.value == "TM7"
+    assert load_cookidoo_settings().device == "TM7"
+    monkeypatch.setenv("COOKIDOO_DEVICE", "")
+    assert load_cookidoo_settings().device is None  # unset: detected from the account
 
     monkeypatch.setenv("COOKIDOO_DEVICE", "TM99")
     with pytest.raises(ValueError, match="COOKIDOO_DEVICE"):

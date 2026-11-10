@@ -119,8 +119,15 @@ class FakeCookidoo:
     api_endpoint = URL("https://cookidoo.example")
     signature_response: object = {"signature": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678"}
 
+    _api_headers = {"Authorization": "Bearer test-access-token-0001"}
+    own_recipe_ids = ["01TESTRECIPE00000000000001"]
+
     async def _ensure_endpoints(self):
         pass
+
+    async def list_custom_recipes(self):
+        self._call("list_custom_recipes")
+        return [SimpleNamespace(id=i) for i in self.own_recipe_ids]
 
     def _path(self, name):
         return {"customer-recipes:recipe-create": "created-recipes/{language}"}[name]

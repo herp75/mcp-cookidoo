@@ -119,6 +119,7 @@
       "idempotentHint": null,
       "openWorldHint": true,
       "params": [
+        "device",
         "hints",
         "ingredients",
         "name",
@@ -168,6 +169,15 @@
       "idempotentHint": null,
       "openWorldHint": true,
       "params": []
+    },
+    "get_thermomix_modes": {
+      "readOnlyHint": true,
+      "destructiveHint": null,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": [
+        "device"
+      ]
     },
     "list_collections": {
       "readOnlyHint": true,
@@ -281,6 +291,7 @@
       "idempotentHint": true,
       "openWorldHint": true,
       "params": [
+        "device",
         "recipe_id",
         "recipe_json"
       ]
@@ -291,6 +302,7 @@
       "idempotentHint": null,
       "openWorldHint": true,
       "params": [
+        "device",
         "recipe_json"
       ]
     },

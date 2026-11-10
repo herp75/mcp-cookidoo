@@ -29,7 +29,7 @@ async def test_get_account_info(fake):
     assert "User: Test Cook" in text
     assert "Subscription: PREMIUM (ACTIVE, active)" in text
     assert "Devices: TM6, TM7" in text
-    assert "Device used for new recipes: TM6" in text
+    assert "Device for new recipes: TM6 (the devices linked to the account)" in text
 
 
 async def test_get_account_info_without_subscription_or_devices(fake):

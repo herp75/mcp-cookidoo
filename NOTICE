@@ -15,7 +15,8 @@ tobilektri/mcp-cookidoo (MIT)
   Copyright (c) 2025 Alexandre Patelli
   Copyright (c) 2026 Tobias Meindl
   Used: the German Thermomix notation of the cookidoo.de recipe editor (labels, units and
-  number format) in guided.py.
+  number format) in guided.py; the mode limits, device rules and editor-page parser in
+  devices.py; the editor snapshots in tests/fixtures/editor/.
 
 vitaliemiron/cookidoo-mcp (Apache License 2.0)
   https://github.com/vitaliemiron/cookidoo-mcp

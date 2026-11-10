@@ -317,7 +317,7 @@ def test_format_time_german():
             "Dampfgaren/20 Min./im Gareinsatz/Stufe 1",
         ),
         ({"mode": "turbo", "time": 1, "pulses": 3}, "Turbo/1 Sek./3x"),
-        ({"mode": "turbo", "time": 0.5}, "Turbo/0.5 Sek./1x"),
+        ({"mode": "turbo", "time": 0.5}, "Turbo/0.5 Sek."),
         ({"mode": "rice_cooker"}, "Reis kochen"),
         ({"mode": "warm_up", "temperature": "65", "speed": "1"}, "Erwärmen/65°C/Stufe 1"),
         ({"mode": "blend", "time": 60, "speed": "8"}, "Pürieren/1 Min./Stufe 8"),

@@ -8,6 +8,7 @@ from tools import (  # noqa: F401 (importing registers the tools)
     meal_plan,
     recipe_collections,
     shopping_list,
+    thermomix,
 )
 from tools.common import _registry
 
