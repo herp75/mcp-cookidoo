@@ -12,6 +12,8 @@ from fastmcp import Client
 from fastmcp.exceptions import ToolError
 from pydantic import TypeAdapter
 
+import cookidoo_service
+import devices
 import server
 from devices import (
     BUILTIN_CATALOG,
@@ -343,13 +345,19 @@ async def test_resolve_falls_back_to_tm6_on_errors(svc, fake):
 
 
 class FakeHTMLResponse:
-    def __init__(self, status: int, body: str):
-        self.status = status
-        self.content = SimpleNamespace(read=self._read)
-        self._body = body.encode()
+    """Sends the body in small chunks, as the network does: one read() is not the page."""
 
-    async def _read(self, limit: int) -> bytes:
-        return self._body[:limit]
+    def __init__(self, status: int, body: str, chunk: int = 1000):
+        self.status = status
+        self.content = SimpleNamespace(iter_chunked=self._chunks)
+        self._body, self._chunk = body.encode(), chunk
+        self.chunks_read = 0
+
+    async def _chunks(self, size: int):
+        step = min(size, self._chunk)
+        for start in range(0, len(self._body), step):
+            self.chunks_read += 1
+            yield self._body[start : start + step]
 
     async def __aenter__(self):
         return self
@@ -407,6 +415,15 @@ async def test_catalog_falls_back_on_bad_pages(svc, editor_page, status, body, n
     assert catalog.source == "builtin" and note in catalog.note
 
 
+async def test_catalog_stops_reading_oversized_pages(svc, editor_page, monkeypatch):
+    monkeypatch.setattr(cookidoo_service, "MAX_EDITOR_HTML", 5000)
+    monkeypatch.setattr(devices, "MAX_EDITOR_HTML", 5000)
+    session = editor_page(body="<p>" + "x" * 50_000)
+    catalog = await svc.get_mode_catalog()
+    assert catalog.source == "builtin" and "too large" in catalog.note
+    assert session.response.chunks_read <= 6
+
+
 async def test_catalog_without_own_recipes(svc, fake, editor_page):
     session = editor_page()
     fake.own_recipe_ids = []
@@ -452,6 +469,15 @@ async def test_generate_for_tm7_returns_json_then_notes(fake, editor_page):
     assert recipe["steps"][0]["settings"][0]["mode"] == "browning"
     notes = result.content[1].text
     assert notes.startswith("Checked for the TM7 (device: given; modes: read from the Cookidoo")
+
+
+async def test_generate_refuses_what_the_upload_would(fake, editor_page):
+    """The step is rendered as for the upload: a setting written twice is refused up front."""
+    editor_page()
+    step = {"text": "Rice cooker {settings}.", "settings": [{"mode": "rice_cooker"}]}
+    with pytest.raises(ToolError) as error:
+        await generate(device="TM6", steps=[step])
+    assert "- Step 1: 'Rice cooker' is written twice in one step" in str(error.value)
 
 
 async def test_generate_works_offline_with_builtin_rules(monkeypatch):

@@ -146,6 +146,17 @@ lists at runtime. The per-mode ranges come from the editor's JavaScript and stay
 the Phase 5 scheduled live check should compare the editor page with the snapshot and record
 the editor's script version, and open an issue when either changes.
 
+## 7b. Live check (2026-11-10, Phase 5)
+
+Checked live on cookidoo.ch (de-CH) with the test account: the editor page has the same
+markup as tobilektri's cookidoo.de snapshot and parses to the built-in catalog. The editor
+script is now pl-customer-recipes **1.174.15** (tobilektri: 1.174.12); its limits are
+unchanged: manual 1–5940 s, dough 1–1200 s, blend 10–300 s at 6–8, warm_up 37–90 °C at
+soft/1/2, steaming 1–5940 s, browning 1–1800 s (default 600). One difference to note: on a
+TM7 the editor sends `pulseCount` also for a single pulse; this server leaves it out, which
+Cookidoo accepts (live TM7 round trip). The weekly workflow repeats this comparison
+(`tests/live/editor_check.py`).
+
 ## 8. Plan once decided
 
 - `devices.py`: `DEVICES`, a `ModeRule` table (from tobilektri, MIT, credited), allowed values

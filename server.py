@@ -24,7 +24,7 @@ from starlette.middleware import Middleware
 import tools
 from cookidoo_service import CookidooService, load_cookidoo_settings
 from devices import BUILTIN_CATALOG, DEFAULT_DEVICE, Device, check_steps
-from guided import from_raw
+from guided import from_raw, to_instruction
 from schemas import CustomRecipe, Step
 from security import (
     BearerTokenMiddleware,
@@ -135,6 +135,14 @@ async def _check_device(
         resolved, source = await service.resolve_device(device, recipe_id)
         catalog = await service.get_mode_catalog(recipe_id)
     errors, warnings = check_steps(recipe.steps, resolved, catalog)
+    # Render the steps as they will be sent, so that generate_recipe_structure already
+    # refuses what the upload would (e.g. a setting written twice in one step)
+    language = service.settings.language if service else os.getenv("COOKIDOO_LANGUAGE", "fr-FR")
+    for number, step in enumerate(recipe.steps, 1):
+        try:
+            to_instruction(step, language)
+        except ValueError as e:
+            errors.append(f"Step {number}: {e}")
     if errors:
         raise ToolError(
             f"Not valid for the {resolved} (device: {source}):\n"

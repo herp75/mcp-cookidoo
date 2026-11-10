@@ -228,6 +228,24 @@ scripts/check_insecure_patterns.sh     # TLS / bind-address guard, also run in C
 
 CI also runs pip-audit, gitleaks, CodeQL, dependency review and a Trivy scan of the Docker image.
 
+### Live tests
+
+`tests/live` runs against the real Cookidoo API. Use a **dedicated test account**, never your
+own: the write tests create and delete recipes, a collection, shopping-list items and meal-plan
+entries (all named "MCP live test …").
+
+```bash
+cp .env.live.example .env.live && chmod 600 .env.live   # then fill in the test account
+uv run pytest tests/live --live -p no:logging --assert=plain        # read-only
+uv run pytest tests/live --live-write -p no:logging --assert=plain  # also writes, cleans up
+```
+
+They read only `COOKIDOO_TEST_*` and refuse to run with the account in `COOKIDOO_EMAIL`.
+The "Live tests" workflow runs them weekly with the secrets `COOKIDOO_TEST_EMAIL` and
+`COOKIDOO_TEST_PASSWORD` of the `live` environment (deployment branch `main` only; optional
+variables `COOKIDOO_TEST_COUNTRY`, `COOKIDOO_TEST_LANGUAGE`, default `ch` / `de-CH`). It also
+compares the Cookidoo recipe editor with `devices.py` and opens an issue if they differ.
+
 ## Acknowledgments
 
 This project is built on top of [cookidoo-api](https://github.com/miaucl/cookidoo-api), which provides the Python interface to the Cookidoo platform. Thanks also to everyone who opened pull requests on this repository — their ideas (search, recipe editing, Docker/STDIO support) shaped this version.

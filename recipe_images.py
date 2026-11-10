@@ -43,6 +43,7 @@ IMAGE_DIRS_ENV = "COOKIDOO_IMAGE_DIRS"
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
 MAX_PIXELS = 50_000_000  # 50 MP; larger images are refused (decompression bombs)
 MAX_SIDE = 4096
+MIN_SIDE = 80  # Cloudinary's moderation refuses smaller images (live test, 2026-11-10)
 EXTENSIONS = {".jpg": "JPEG", ".jpeg": "JPEG", ".png": "PNG", ".webp": "WEBP"}
 if ".heic" in Image.registered_extensions():  # only with a HEIF plugin installed
     EXTENSIONS[".heic"] = "HEIF"
@@ -132,6 +133,11 @@ def reencode_jpeg(data: bytes, expected_format: str) -> bytes:
     else:
         image = image.convert("RGB")
     image.thumbnail((MAX_SIDE, MAX_SIDE))
+    if min(image.size) < MIN_SIDE:
+        raise ImageRejected(
+            f"Image is too small or too narrow: each side must be at least {MIN_SIDE} pixels "
+            f"(after scaling to at most {MAX_SIDE})."
+        )
 
     output = BytesIO()
     image.save(output, format="JPEG", quality=90, optimize=True)  # no exif=/icc_profile=
@@ -185,9 +191,15 @@ async def _upload(
     async with session.post(
         CLOUDINARY_UPLOAD_URL, data=form, timeout=ClientTimeout(total=60), allow_redirects=False
     ) as response:
+        try:
+            payload = await response.json(content_type=None)
+        except ValueError:
+            payload = None
         if response.status > 299:
-            raise RuntimeError(f"Cookidoo's image storage rejected the upload ({response.status}).")
-        payload = await response.json(content_type=None)
+            raise RuntimeError(
+                f"Cookidoo's image storage rejected the upload ({response.status})"
+                + _reason(payload)
+            )
     if not isinstance(payload, dict):
         raise RuntimeError("Cookidoo's image storage returned an invalid response.")
     public_id, image_format = payload.get("public_id"), payload.get("format")
@@ -197,6 +209,17 @@ async def _upload(
     ):
         raise RuntimeError("Cookidoo's image storage returned no usable image key.")
     return f"{public_id}.{image_format}"
+
+
+def _reason(payload: object) -> str:
+    """Cloudinary's error message, shortened and reduced to plain text, or nothing."""
+    error = payload.get("error") if isinstance(payload, dict) else None
+    message = error.get("message") if isinstance(error, dict) else None
+    if not isinstance(message, str):
+        return "."
+    message = re.sub(r"\s+", " ", message.split(" String to sign")[0])
+    message = re.sub(r"[^\w .,:;()'%/-]", "", message).strip()[:200]
+    return f": {message}" if message else "."
 
 
 async def upload_recipe_image(

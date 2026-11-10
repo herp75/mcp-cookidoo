@@ -24,6 +24,7 @@ from aiohttp import ClientSession, ClientTimeout
 from cookidoo_api import (
     Cookidoo,
     CookidooAdditionalItem,
+    CookidooAuthData,
     CookidooCollection,
     CookidooConfig,
     CookidooCreateCustomRecipe,
@@ -123,6 +124,12 @@ def load_cookidoo_settings() -> CookidooSettings:
     )
 
 
+def _register_tokens(auth: CookidooAuthData) -> None:
+    """Mask the OAuth tokens of every login and refresh in errors and logs, like the password."""
+    register_secret(auth.access_token)
+    register_secret(auth.refresh_token)
+
+
 class MoveError(Exception):
     """A meal-plan move failed after the recipe was added to the new day."""
 
@@ -175,6 +182,7 @@ class CookidooService:
                         password=self.settings.password,
                         localization=localizations[0],
                     ),
+                    on_auth_data_update=_register_tokens,
                 )
                 await client.login()
             except BaseException:
@@ -377,25 +385,7 @@ class CookidooService:
                         note="built-in list: no own recipe yet to read the editor from",
                     )
                 recipe_id = recipes[0].id
-            if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", recipe_id):
-                raise ValueError("unexpected recipe ID")
-            assert self._session is not None
-            url = (
-                URL(api.localization.url).origin()
-                / "created-recipes"
-                / (api.localization.language)
-                / recipe_id
-                / "edit"
-                / "ingredients-and-preparation-steps"
-            )
-            headers = {**api._api_headers, "ACCEPT": "text/html"}
-            async with self._session.get(
-                url, headers=headers, timeout=ClientTimeout(total=20), allow_redirects=False
-            ) as response:
-                if response.status != 200:
-                    raise RuntimeError(f"editor page returned {response.status}")
-                body = await response.content.read(MAX_EDITOR_HTML + 1)
-            catalog = parse_editor_html(body.decode("utf-8", errors="replace"))
+            catalog = parse_editor_html(await self.editor_html(recipe_id))
         except Exception as e:
             return replace(
                 BUILTIN_CATALOG,
@@ -403,6 +393,34 @@ class CookidooService:
             )
         self._catalog, self._catalog_time = catalog, time.monotonic()
         return catalog
+
+    async def editor_html(self, recipe_id: str) -> str:
+        """The Cookidoo recipe editor page of one of the user's recipes (at most 2 MB + 1)."""
+        if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", recipe_id):
+            raise ValueError("unexpected recipe ID")
+        api = await self.client()
+        assert self._session is not None
+        url = (
+            URL(api.localization.url).origin()
+            / "created-recipes"
+            / (api.localization.language)
+            / recipe_id
+            / "edit"
+            / "ingredients-and-preparation-steps"
+        )
+        headers = {**api._api_headers, "ACCEPT": "text/html"}
+        async with self._session.get(
+            url, headers=headers, timeout=ClientTimeout(total=20), allow_redirects=False
+        ) as response:
+            if response.status != 200:
+                raise RuntimeError(f"editor page returned {response.status}")
+            # read() returns what has arrived so far: read the chunks up to the limit
+            body = bytearray()
+            async for chunk in response.content.iter_chunked(64 * 1024):
+                body += chunk
+                if len(body) > MAX_EDITOR_HTML:
+                    break
+        return bytes(body[: MAX_EDITOR_HTML + 1]).decode("utf-8", errors="replace")
 
     # --- Account ---------------------------------------------------------------------------
 

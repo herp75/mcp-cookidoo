@@ -293,6 +293,26 @@ class FakeCookidoo:
         return self._day(day)
 
 
+def pytest_addoption(parser):
+    group = parser.getgroup("live", "live Cookidoo tests (dedicated test account, tests/live)")
+    group.addoption("--live", action="store_true", help="run the read-only live tests")
+    group.addoption(
+        "--live-write",
+        action="store_true",
+        help="also run the live tests that create data on the test account (and remove it)",
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    write = config.getoption("--live-write")
+    read = write or config.getoption("--live")
+    for item in items:
+        if "live_write" in item.keywords and not write:
+            item.add_marker(pytest.mark.skip(reason="live test that writes: needs --live-write"))
+        elif "live" in item.keywords and not read:
+            item.add_marker(pytest.mark.skip(reason="live test: needs --live"))
+
+
 SECRET = "fake-password-for-tests-0001"
 
 
