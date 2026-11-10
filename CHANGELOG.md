@@ -17,8 +17,9 @@
   All actions pinned by commit SHA with least-privilege permissions
 
 ### Changed
-- Docker image: multi-stage build (uv only in the build stage), runs as a non-root user, base
-  images pinned by digest and Debian security updates applied, only server files copied
+- Docker image: Alpine-based multi-stage build (uv only in the build stage), runs as a
+  non-root user, base images pinned by digest and security updates applied, only server
+  files copied
 
 ### Security
 - fastmcp upgraded to 4.1.2 (GHSA-7xgj-8392-5q4r, GHSA-vqqp-x5qm-5qp4)
