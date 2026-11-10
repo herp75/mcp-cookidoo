@@ -40,6 +40,8 @@ install_log_redaction()
 PROMPTS_DIR = Path(__file__).parent
 VERSION = tomllib.loads((PROMPTS_DIR / "pyproject.toml").read_text())["project"]["version"]
 
+PROMPT_FILES = {"fr": "prompt_FR.md", "de": "prompt_DE.md"}
+
 # Module-level authenticated session, created lazily on first use
 _cookidoo_service: CookidooService | None = None
 
@@ -376,9 +378,9 @@ def create_thermomix_recipe(dish: str, language: str = "en") -> str:
 
     Args:
         dish: The dish to create, e.g. "Creamy mushroom and parmesan risotto"
-        language: "en" or "fr"
+        language: "en", "fr" or "de" (also accepts e.g. "fr-FR", "de-AT"); others use English
     """
-    filename = "prompt_FR.md" if language.lower().startswith("fr") else "prompt.md"
+    filename = PROMPT_FILES.get(language.lower()[:2], "prompt.md")
     template = (PROMPTS_DIR / filename).read_text(encoding="utf-8")
     return re.sub(r"\[[^\]]*\]", f'"{dish}"', template, count=1)
 

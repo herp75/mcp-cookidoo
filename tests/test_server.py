@@ -260,6 +260,26 @@ async def test_service_sends_settings_in_account_language(monkeypatch):
     assert api.update_custom_recipe.await_args.args[1].instructions == expected
 
 
+@pytest.mark.parametrize(
+    ("language", "marker"),
+    [
+        ("en", "Interaction Process"),
+        ("fr-FR", "Consignes de Rédaction"),
+        ("de", "Schreibrichtlinien"),
+        ("de-AT", "Schreibrichtlinien"),
+        ("it", "Interaction Process"),
+    ],
+)
+async def test_prompt_language(language, marker):
+    async with Client(server.mcp) as client:
+        result = await client.get_prompt(
+            "create_thermomix_recipe", {"dish": "Linsensuppe", "language": language}
+        )
+    text = result.messages[0].content.text
+    assert marker in text
+    assert '"Linsensuppe"' in text and "[" not in text.splitlines()[2]
+
+
 async def test_prompt_inserts_dish():
     async with Client(server.mcp) as client:
         result = await client.get_prompt(

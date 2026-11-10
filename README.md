@@ -14,7 +14,7 @@ An MCP (Model Context Protocol) server for interacting with the Thermomix Cookid
 - **Collections**: List, follow and create collections, add and remove their recipes
 - **Account**: Subscription and linked Thermomix devices
 - **Guided Cooking**: Steps can carry Thermomix settings (time, temperature, speed, reverse), preset on the machine
-- **Guided Prompt**: `create_thermomix_recipe` walks the assistant through writing a proper Thermomix recipe (EN / FR)
+- **Guided Prompt**: `create_thermomix_recipe` walks the assistant through writing a proper Thermomix recipe (EN / FR / DE)
 
 ## Setup
 

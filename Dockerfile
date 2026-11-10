@@ -21,7 +21,7 @@ RUN apk upgrade --no-cache
 WORKDIR /app
 COPY --from=build /app/.venv /app/.venv
 # Only the server modules and the prompt templates; no tests, no .env
-COPY pyproject.toml server.py cookidoo_service.py guided.py schemas.py security.py prompt.md prompt_FR.md ./
+COPY pyproject.toml server.py cookidoo_service.py guided.py schemas.py security.py prompt.md prompt_FR.md prompt_DE.md ./
 COPY tools/*.py ./tools/
 
 RUN adduser -S -D -H -u 10001 app
