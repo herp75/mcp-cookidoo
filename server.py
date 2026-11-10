@@ -317,7 +317,8 @@ async def generate_recipe_structure(
     device: Device | None = None,
 ) -> ToolResult:
     """
-    Generate and validate a recipe structure ready for upload to Cookidoo.
+    Generate and validate a recipe structure ready for upload to Cookidoo. Changes nothing
+    on Cookidoo.
 
     Returns a JSON structure to show to the user and then pass to
     upload_custom_recipe or update_custom_recipe. Thermomix settings are checked against
@@ -371,7 +372,8 @@ async def upload_custom_recipe(recipe_json: str, device: Device | None = None) -
     """
     Create a brand new custom recipe on the user's Cookidoo account, for one Thermomix.
 
-    Only call this after the user explicitly approved the recipe.
+    Only call this after the user explicitly approved the recipe. Each call creates another
+    recipe: to change one already uploaded, use update_custom_recipe instead.
 
     Args:
         recipe_json: The validated recipe JSON from generate_recipe_structure
@@ -395,7 +397,8 @@ async def update_custom_recipe(
     recipe_id: str, recipe_json: str, device: Device | None = None
 ) -> str:
     """
-    Replace the content of an existing custom recipe on Cookidoo.
+    Replace the content of an existing custom recipe on Cookidoo. The previous name,
+    ingredients, steps and hints are overwritten and cannot be restored.
 
     Get the current version with get_custom_recipe, edit it, show the result to the
     user and only call this after their explicit approval. The recipe's devices are not

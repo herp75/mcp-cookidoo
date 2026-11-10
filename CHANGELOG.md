@@ -3,6 +3,12 @@
 ## [Unreleased]
 
 ### Added
+- `edge` Docker image (amd64/arm64, provenance and SBOM) pushed to GHCR on every change on
+  `main`, besides the version tags of releases
+- The scheduled live run opens (or comments on) an issue "Live tests failed"
+- `docs/architecture.md` (modules, service/tool split, session, step and device flow, how to
+  add a tool) and `CONTRIBUTING.md`; README credits, a fuller disclaimer, Docker with an env
+  file and in HTTP mode
 - Live tests (`tests/live`) against the real Cookidoo API with a dedicated test account:
   read-only with `--live`, plus create/update/delete round trips with `--live-write` (TM6 and
   TM7 recipes, copy, image upload, collections, shopping list, meal plan), each removing what
@@ -68,6 +74,7 @@
   All actions pinned by commit SHA with least-privilege permissions
 
 ### Fixed
+- The Docker workflow did not rebuild the image for changes in `tools/` or the prompts
 - The mode catalog read only the first chunk of the editor page, so it fell back to the
   built-in list on real connections (found by the live tests)
 - `generate_recipe_structure` accepted steps the upload then refused (a setting written twice
@@ -80,6 +87,9 @@
   `day`; Cookidoo returns the 7 days starting at `day`, which is now what it says
 
 ### Changed
+- Tool descriptions state their side effects more precisely: `generate_recipe_structure`
+  changes nothing, `upload_custom_recipe` / `copy_recipe_to_custom` / `create_collection`
+  create another item on each call, `update_custom_recipe` overwrites for good
 - `COOKIDOO_DEVICE` no longer defaults to TM6 (unset: detected from the account) and no longer
   accepts TM31
 - `generate_recipe_structure` returns the recipe JSON as the first content block, unchanged,

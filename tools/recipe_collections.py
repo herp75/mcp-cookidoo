@@ -102,7 +102,8 @@ async def create_collection(
     name: Annotated[str, Field(min_length=1, max_length=MAX_NAME_LENGTH)],
 ) -> str:
     """
-    Create a new, empty custom collection on the user's account.
+    Create a new, empty custom collection on the user's account. Each call creates another
+    collection.
 
     Args:
         name: Collection name
