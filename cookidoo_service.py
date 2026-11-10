@@ -13,6 +13,7 @@ on disk, write them with mode 0600 under the user's config directory, never in t
 """
 
 import asyncio
+import json
 import os
 import re
 import time
@@ -32,6 +33,7 @@ from cookidoo_api import (
     CookidooCustomRecipe,
     CookidooDevice,
     CookidooIngredientItem,
+    CookidooRequestException,
     CookidooSearchResult,
     CookidooShoppingRecipe,
     CookidooShoppingRecipeDetails,
@@ -79,6 +81,8 @@ class CookidooSettings:
 CATALOG_TTL = 3600  # seconds a mode catalog read from Cookidoo is reused
 FALLBACK_TTL = 300  # seconds the built-in catalog is used after the editor could not be read
 RETIRE_DELAY = 60  # seconds a replaced session stays open for calls still using it
+MAX_RAW_JSON = 20 * 1024 * 1024  # bytes: a response for the backup larger than this is refused
+MAX_COLLECTION_PAGES = 100
 LOGIN_BACKOFF = 60  # seconds a refused automatic login is not retried (no account lockout)
 
 
@@ -483,6 +487,79 @@ class CookidooService:
                 if len(body) > MAX_EDITOR_HTML:
                     break
         return bytes(body[: MAX_EDITOR_HTML + 1]).decode("utf-8", errors="replace")
+
+    # --- Raw JSON, for the backup -----------------------------------------------------------
+
+    async def _get_json(
+        self, url: URL, accept: str, etag: str | None = None
+    ) -> tuple[Any | None, str | None]:
+        """
+        GET a JSON document. With an ETag from an earlier response, an unchanged document is
+        not downloaded again: returns (None, etag) then. Otherwise (the document, its ETag).
+        """
+        api = await self.client()
+        assert self._session is not None
+        headers = {**api._api_headers, "ACCEPT": accept}
+        if etag:
+            headers["If-None-Match"] = etag
+        async with self._session.get(
+            url, headers=headers, timeout=ClientTimeout(total=60), allow_redirects=False
+        ) as response:
+            if response.status == 304 and etag:
+                return None, etag
+            if response.status == 401:
+                raise CookidooAuthException("Cookidoo refused the login token (401)")
+            if response.status != 200:
+                raise CookidooRequestException(f"Cookidoo returned {response.status}")
+            body = bytearray()
+            async for chunk in response.content.iter_chunked(64 * 1024):
+                body += chunk
+                if len(body) > MAX_RAW_JSON:
+                    raise CookidooRequestException("response too large")
+            return json.loads(body), response.headers.get("ETag")
+
+    async def own_recipes_raw(
+        self, etag: str | None = None
+    ) -> tuple[list[dict] | None, str | None]:
+        """
+        All custom recipes as Cookidoo's raw JSON, in one request (Cookidoo keeps at most 300
+        per account and lists them in full). (None, etag) if nothing changed since that ETag.
+        """
+        api = await self.client()
+        await api._ensure_endpoints()
+        url = api.api_endpoint / api._path("customer-recipes:recipe-create").format(
+            **api.localization.__dict__
+        )
+        result, new_etag = await self._get_json(url, CUSTOM_RECIPES_PATH_ACCEPT, etag)
+        if result is None:
+            return None, new_etag
+        items = result.get("items") if isinstance(result, dict) else None
+        if not isinstance(items, list):
+            raise CookidooRequestException("unexpected custom recipe list")
+        return [item for item in items if isinstance(item, dict)], new_etag
+
+    async def catalogue_recipe_raw(self, recipe_id: str) -> dict:
+        """A catalogue recipe as Cookidoo's raw JSON (Cookidoo sends no ETag for these)."""
+        if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", recipe_id):
+            raise ValueError("unexpected recipe ID")
+        api = await self.client()
+        await api._ensure_endpoints()
+        url = api.api_endpoint / api._path("recipe:details").format(
+            **api.localization.__dict__, id=recipe_id
+        )
+        result, _ = await self._get_json(url, "application/json")
+        if not isinstance(result, dict):
+            raise CookidooRequestException("unexpected recipe")
+        return result
+
+    async def all_collections(self, managed: bool) -> list[CookidooCollection]:
+        """Every followed (managed) or own collection, all pages."""
+        collections, page, pages = [], 0, 1
+        while page < min(pages, MAX_COLLECTION_PAGES):
+            batch, _, pages = await self.list_collections(managed, page)
+            collections += batch
+            page += 1
+        return collections
 
     # --- Account ---------------------------------------------------------------------------
 

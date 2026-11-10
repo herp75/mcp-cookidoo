@@ -9,6 +9,7 @@ from collections.abc import Mapping
 
 from cookidoo_api import (
     CookidooCustomAnnotation,
+    CookidooCustomRecipe,
     CookidooIngredientAnnotation,
     CookidooInstruction,
     CookidooTemperatureSetting,
@@ -17,6 +18,7 @@ from cookidoo_api import (
 from pydantic import TypeAdapter, ValidationError
 
 from schemas import (
+    MAX_MINUTES,
     PLACEHOLDER,
     BlendSettings,
     BrowningSettings,
@@ -103,6 +105,11 @@ _SETTINGS = TypeAdapter(StepSettings)
 
 def _words(language: str) -> dict[str, str]:
     return _WORDS.get(language.split("-")[0].lower(), _WORDS["en"])
+
+
+def label(key: str, language: str) -> str:
+    """A word of the Thermomix notation in the language, e.g. label("reverse", "de-CH")."""
+    return _words(language)[key]
 
 
 def format_time(seconds: float, language: str = "en") -> str:
@@ -324,3 +331,34 @@ def read_step(instruction: object) -> tuple[str | Step, int]:
         return text, lost
     step = Step(text=rebuilt + text[start:], settings=settings_list, ingredients=ingredients)
     return step, lost
+
+
+def _whole_minutes(seconds: int | None) -> int:
+    """A time from Cookidoo, in seconds or missing, as the minutes CustomRecipe accepts."""
+    return min(max(1, round((seconds or 0) / 60)), MAX_MINUTES)
+
+
+def editable_recipe(recipe: CookidooCustomRecipe, instructions: list) -> tuple[dict, list[int]]:
+    """
+    A custom recipe in the JSON format of CustomRecipe (what update_custom_recipe and
+    upload_custom_recipe accept), and the numbers of the steps whose machine settings
+    could not be represented (saving it again would drop them).
+    """
+    steps, lost_in = [], []
+    for step, lost in map(read_step, instructions):
+        if lost:
+            lost_in.append(len(steps) + 1)
+        if step:
+            steps.append(step if isinstance(step, str) else step.model_dump())
+    total_time = _whole_minutes(recipe.total_time)
+    data = {
+        "name": recipe.name,
+        "ingredients": recipe.ingredients,
+        "steps": steps,
+        "servings": recipe.serving_size,
+        # Cookidoo may store an active time longer than the total; the upload refuses that
+        "prep_time": min(_whole_minutes(recipe.active_time), total_time),
+        "total_time": total_time,
+        "hints": recipe.hints or None,
+    }
+    return data, lost_in

@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added
+- `backup.py`: read-only backup of the account to Markdown (own recipes with a re-uploadable
+  JSON copy, collections, the catalogue recipes in them). Downloads only what changed: one
+  request (an empty 304 when nothing changed) for all own recipes, each catalogue recipe once
+  and again after 90 days. `scripts/cookidoo-backup.sh` runs it with the Docker image and
+  commits the changes to git; systemd user units for a weekly run
+
 ## [2.1.0] - 2026-11-10
 
 ### Added

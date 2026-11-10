@@ -21,7 +21,7 @@ RUN apk upgrade --no-cache
 WORKDIR /app
 COPY --from=build /app/.venv /app/.venv
 # Only the server modules and the prompt templates; no tests, no .env
-COPY pyproject.toml server.py cookidoo_service.py guided.py schemas.py security.py recipe_images.py devices.py prompt.md prompt_FR.md prompt_DE.md ./
+COPY pyproject.toml server.py backup.py cookidoo_service.py guided.py schemas.py security.py recipe_images.py devices.py prompt.md prompt_FR.md prompt_DE.md ./
 COPY tools/*.py ./tools/
 
 # MCP Registry: proves this image belongs to the server.json entry of the same name

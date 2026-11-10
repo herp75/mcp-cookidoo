@@ -244,6 +244,45 @@ Modes are written with their name, so the text should not repeat it ("then start
 ingredient list. Invalid settings and links are rejected. `get_custom_recipe` returns steps
 in the same format, so a recipe keeps its settings and links when edited.
 
+## Backup
+
+`backup.py` copies the account to Markdown files: your own recipes, your collections and the
+catalogue recipes in them. It only reads from Cookidoo. Each run downloads only what changed:
+
+- Own recipes: one request for all of them. Cookidoo answers with an empty `304 Not Modified`
+  when nothing changed since the last run.
+- Collections: their lists, a few small requests.
+- Catalogue recipes: each new one once (about 4 KB). A copy older than 90 days is downloaded
+  again, at most 1/12 of them per run.
+
+Files are only rewritten when their content changes, and nothing is deleted: a recipe that
+disappears from Cookidoo or from all collections keeps its file, marked as such. Each own recipe
+also gets a `.json` file, with the recipe in the format `upload_custom_recipe` accepts (to
+upload it again) and exactly as Cookidoo returned it.
+
+```
+cookidoo-backup/
+  README.md                       index
+  own/<name>--<id>.md, .json      your recipes
+  catalogue/<name>--<id>.md       recipes from your collections
+  collections/<name>--<id>.md     chapters, with links to the recipe files
+```
+
+`scripts/cookidoo-backup.sh` runs it with the Docker image and commits the changes to a git
+repository, so the history shows what changed and when. It uses the same env file as the
+server (default `~/.config/cookidoo-mcp/cookidoo.env`):
+
+```bash
+scripts/cookidoo-backup.sh ~/cookidoo-backup     # podman, or docker if podman is missing
+```
+
+To run it weekly, copy `scripts/systemd/cookidoo-backup.{service,timer}` to
+`~/.config/systemd/user/`, adjust the path in the service, and
+`systemctl --user enable --now cookidoo-backup.timer`. Without Docker:
+`uv run backup.py ~/cookidoo-backup` (reads `.env` like the server).
+
+Catalogue recipes are Vorwerk's content: keep the backup private, never in a public repository.
+
 ## Security
 
 - The server stores your real Cookidoo password (Cookidoo has no OAuth): use a unique password.

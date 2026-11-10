@@ -39,6 +39,10 @@ Only the latest release receives security fixes.
   included) and must stay inside them; only JPEG/PNG/WebP up to 10 MB and 50 megapixels;
   images are re-encoded to JPEG without metadata; the upload goes only to Cookidoo's fixed
   Cloudinary endpoint, signed by Cookidoo, without Cookidoo credentials.
+- **Backup** (`backup.py`) only reads from Cookidoo. It never puts IDs from Cookidoo into a
+  file path without checking them, writes files readable only by the user, and keeps the
+  credentials in the env file, as the server does. The backup holds private recipes and
+  Vorwerk's recipes: keep it private.
 - **Input validation:** IDs are checked against `^[A-Za-z0-9_-]{1,64}$` before they are put
   into a URL; list inputs are capped.
 - **Live tests** run against a dedicated test account only: they read `COOKIDOO_TEST_*`, never
