@@ -5,6 +5,7 @@ from typing import Annotated
 from pydantic import Field
 
 from recipe_images import ImageRejected
+from schemas import MAX_SERVINGS
 from security import tool_error, validate_id
 from tools.common import DESTRUCTIVE_IDEMPOTENT, WRITE, one_line, service, tool
 
@@ -12,7 +13,7 @@ from tools.common import DESTRUCTIVE_IDEMPOTENT, WRITE, one_line, service, tool
 @tool(WRITE)
 async def copy_recipe_to_custom(
     recipe_id: str,
-    servings: Annotated[int | None, Field(ge=1, le=20)] = None,
+    servings: Annotated[int | None, Field(ge=1, le=MAX_SERVINGS)] = None,
 ) -> str:
     """
     Copy a Cookidoo catalogue recipe into a new custom recipe on the user's account, to adapt

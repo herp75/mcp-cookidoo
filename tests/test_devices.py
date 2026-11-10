@@ -415,6 +415,15 @@ async def test_catalog_falls_back_on_bad_pages(svc, editor_page, status, body, n
     assert catalog.source == "builtin" and note in catalog.note
 
 
+async def test_catalog_fallback_is_reused_for_a_while(svc, editor_page, monkeypatch):
+    session = editor_page(302, "")
+    first = await svc.get_mode_catalog()
+    assert await svc.get_mode_catalog() is first and len(session.requests) == 1
+    clock = cookidoo_service.time.monotonic() + cookidoo_service.FALLBACK_TTL + 1
+    monkeypatch.setattr(cookidoo_service.time, "monotonic", lambda: clock)
+    assert (await svc.get_mode_catalog()).source == "builtin" and len(session.requests) == 2
+
+
 async def test_catalog_stops_reading_oversized_pages(svc, editor_page, monkeypatch):
     monkeypatch.setattr(cookidoo_service, "MAX_EDITOR_HTML", 5000)
     monkeypatch.setattr(devices, "MAX_EDITOR_HTML", 5000)

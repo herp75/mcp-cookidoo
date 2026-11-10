@@ -274,18 +274,28 @@ def _settings(annotation: Mapping) -> StepSettings | None:
 
 def from_raw(instruction: object) -> str | Step:
     """A step from Cookidoo's raw custom-recipe JSON, in the format accepted by CustomRecipe."""
+    return read_step(instruction)[0]
+
+
+def read_step(instruction: object) -> tuple[str | Step, int]:
+    """
+    Like from_raw, and also count the machine settings of the step that cannot be represented
+    (unknown modes or fields, bad positions, overlaps): saving the step again drops them.
+    """
     if isinstance(instruction, str):
-        return instruction
+        return instruction, 0
     if not isinstance(instruction, Mapping):
-        return ""
+        return "", 0
     text = str(instruction.get("text", ""))
-    found, links = [], []
+    found, links, lost = [], [], 0
     for annotation in instruction.get("annotations") or []:
-        if not isinstance(annotation, Mapping) or not (
-            span := _span(text, annotation.get("position"))
-        ):
+        if not isinstance(annotation, Mapping):
             continue
-        if annotation.get("type") == "INGREDIENT":
+        is_link = annotation.get("type") == "INGREDIENT"
+        if not (span := _span(text, annotation.get("position"))):
+            lost += not is_link
+            continue
+        if is_link:
             description = (annotation.get("data") or {}).get("description")
             if isinstance(description, Mapping):
                 description = description.get("text")
@@ -293,10 +303,13 @@ def from_raw(instruction: object) -> str | Step:
                 links.append((span, description))
         elif settings := _settings(annotation):
             found.append((span, settings))
+        else:
+            lost += 1
     found.sort(key=lambda item: item[0])
     rebuilt, settings_list, start = "", [], 0
     for (begin, end), settings in found:
         if begin < start:
+            lost += 1
             continue
         rebuilt += text[start:begin] + PLACEHOLDER
         settings_list.append(settings)
@@ -308,5 +321,6 @@ def from_raw(instruction: object) -> str | Step:
         if not any(begin < e and s < end for s, e in used)
     ]
     if not (settings_list or ingredients):
-        return text
-    return Step(text=rebuilt + text[start:], settings=settings_list, ingredients=ingredients)
+        return text, lost
+    step = Step(text=rebuilt + text[start:], settings=settings_list, ingredients=ingredients)
+    return step, lost

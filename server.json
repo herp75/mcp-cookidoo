@@ -49,6 +49,13 @@
           "isRequired": false,
           "format": "string",
           "isSecret": false
+        },
+        {
+          "name": "COOKIDOO_IMAGE_DIRS",
+          "description": "Folders upload_custom_recipe_image may read, ':'-separated; in the container, mount them read-only (default: upload disabled)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
         }
       ]
     }

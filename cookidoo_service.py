@@ -25,6 +25,7 @@ from cookidoo_api import (
     Cookidoo,
     CookidooAdditionalItem,
     CookidooAuthData,
+    CookidooAuthException,
     CookidooCollection,
     CookidooConfig,
     CookidooCreateCustomRecipe,
@@ -76,6 +77,9 @@ class CookidooSettings:
 
 
 CATALOG_TTL = 3600  # seconds a mode catalog read from Cookidoo is reused
+FALLBACK_TTL = 300  # seconds the built-in catalog is used after the editor could not be read
+RETIRE_DELAY = 60  # seconds a replaced session stays open for calls still using it
+LOGIN_BACKOFF = 60  # seconds a refused automatic login is not retried (no account lockout)
 
 
 def pick_device(devices: list[str]) -> Device | None:
@@ -152,6 +156,9 @@ class CookidooService:
         self._lock = asyncio.Lock()
         self._catalog: ModeCatalog | None = None
         self._catalog_time = 0.0
+        self._catalog_ttl = CATALOG_TTL
+        self._retiring: dict[asyncio.Task, ClientSession] = {}
+        self._login_refused: tuple[float, CookidooAuthException] | None = None
 
     async def login(self) -> Cookidoo:
         """
@@ -195,9 +202,35 @@ class CookidooService:
             raise
 
         old, self._session, self._api_client = self._session, session, client
+        self._login_refused = None
         if old is not None:
-            await old.close()
+            # Calls that started before the re-login may still be using the old session
+            task = asyncio.create_task(self._close_later(old))
+            self._retiring[task] = old
+            task.add_done_callback(lambda done: self._retiring.pop(done, None))
         return client
+
+    @staticmethod
+    async def _close_later(session: ClientSession) -> None:
+        try:
+            await asyncio.sleep(RETIRE_DELAY)
+        finally:
+            await session.close()
+
+    async def _automatic_login(self) -> Cookidoo:
+        """
+        _login for logins nobody asked for. After Cookidoo refused the credentials, repeat
+        that answer for a minute instead of trying again on every call. Call with the lock.
+        """
+        if self._login_refused:
+            since, error = self._login_refused
+            if time.monotonic() - since < LOGIN_BACKOFF:
+                raise CookidooAuthException(str(error))
+        try:
+            return await self._login()
+        except CookidooAuthException as error:
+            self._login_refused = (time.monotonic(), error)
+            raise
 
     async def client(self) -> Cookidoo:
         """
@@ -205,15 +238,25 @@ class CookidooService:
         share one login: without the lock, each would log in and close the session the
         others were using ("Session is closed").
         """
-        if (client := self._api_client) is not None:
+        if (client := self._api_client) is not None and not client._is_token_expiring():
             return client
         async with self._lock:
             if self._api_client is None:
-                return await self._login()
+                return await self._automatic_login()
+            try:
+                # Refresh now rather than inside the next request: when Cookidoo no longer
+                # accepts the refresh token, log in again instead of failing every call
+                await self._api_client._ensure_token()
+            except CookidooAuthException:
+                return await self._automatic_login()
             return self._api_client
 
     async def _close_session(self) -> None:
         self._api_client = None
+        retiring, self._retiring = self._retiring, {}
+        for task, session in retiring.items():
+            task.cancel()
+            await session.close()
         if self._session is not None:
             await self._session.close()
             self._session = None
@@ -387,7 +430,7 @@ class CookidooService:
         user's own recipes and cached for an hour. Never raises: on any problem the built-in
         catalog is returned, with a note saying why.
         """
-        if self._catalog and time.monotonic() - self._catalog_time < CATALOG_TTL:
+        if self._catalog and time.monotonic() - self._catalog_time < self._catalog_ttl:
             return self._catalog
         try:
             api = await self.client()
@@ -401,11 +444,16 @@ class CookidooService:
                 recipe_id = recipes[0].id
             catalog = parse_editor_html(await self.editor_html(recipe_id))
         except Exception as e:
-            return replace(
+            # Remember the fallback for a while: no new login and page read on every check
+            fallback = replace(
                 BUILTIN_CATALOG,
                 note=redact(f"built-in list: the Cookidoo editor could not be read ({e})"),
             )
+            self._catalog, self._catalog_time = fallback, time.monotonic()
+            self._catalog_ttl = FALLBACK_TTL
+            return fallback
         self._catalog, self._catalog_time = catalog, time.monotonic()
+        self._catalog_ttl = CATALOG_TTL
         return catalog
 
     async def editor_html(self, recipe_id: str) -> str:
@@ -563,34 +611,44 @@ class CookidooService:
         Move a planned recipe to another day. Returns whether it is a custom recipe.
 
         Adds to the new day first, then removes from the old one, so a failure never loses
-        the recipe: if the removal fails, the addition is rolled back.
+        the recipe: if the removal fails, the addition is rolled back. If the recipe is
+        already planned on the new day, it is only removed from the old one (and a rollback
+        never touches the entry that was there before).
 
         Raises:
             LookupError: if the recipe is not planned on from_day
             MoveError: if the move failed (and whether the rollback worked)
         """
         api = await self.client()
-        days = {d.id: d for d in await api.get_recipes_in_calendar_week(from_day)}
-        source = days.get(from_day.isoformat())
-        if source is None:
+
+        async def planned(day: date) -> tuple[bool, bool]:
+            """Whether the recipe is planned on that day, and whether as a custom recipe."""
+            week = await api.get_recipes_in_calendar_week(day)
+            entry = {d.id: d for d in week}.get(day.isoformat())
+            if entry is None:
+                return False, False
+            if recipe_id in entry.customer_recipe_ids or any(
+                r.id == recipe_id and r.is_custom for r in entry.recipes
+            ):
+                return True, True
+            return any(r.id == recipe_id for r in entry.recipes), False
+
+        found, is_custom = await planned(from_day)
+        if not found:
             raise LookupError(recipe_id)
-        if recipe_id in source.customer_recipe_ids or any(
-            r.id == recipe_id and r.is_custom for r in source.recipes
-        ):
-            is_custom = True
-        elif any(r.id == recipe_id for r in source.recipes):
-            is_custom = False
-        else:
-            raise LookupError(recipe_id)
+        already_there, _ = await planned(to_day)
 
         add = api.add_custom_recipes_to_calendar if is_custom else api.add_recipes_to_calendar
         remove = (
             api.remove_custom_recipe_from_calendar if is_custom else api.remove_recipe_from_calendar
         )
-        await add(to_day, [recipe_id])
+        if not already_there:
+            await add(to_day, [recipe_id])
         try:
             await remove(from_day, recipe_id)
         except Exception as error:
+            if already_there:
+                raise MoveError(error, rolled_back=True) from error
             try:
                 await remove(to_day, recipe_id)
             except Exception as rollback_error:

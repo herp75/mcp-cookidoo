@@ -93,6 +93,9 @@ in an env file (`chmod 600`) rather than in the client configuration:
 ```
 
 `cookidoo.env` holds the variables of the table above (`COOKIDOO_EMAIL=…`, one per line).
+For `upload_custom_recipe_image`, mount the photo folder read-only and name it in
+`COOKIDOO_IMAGE_DIRS`: add `"-v", "/path/to/photos:/photos:ro", "-e", "COOKIDOO_IMAGE_DIRS=/photos"`
+before the image name.
 To build the image yourself: `docker build -t mcp-cookidoo .`; it runs as a non-root user.
 
 ### Verifying a release
@@ -128,6 +131,11 @@ docker run --rm --env-file cookidoo.env -e COOKIDOO_MCP_HOST=0.0.0.0 \
   -e COOKIDOO_MCP_TOKEN="$(openssl rand -hex 32)" -p 127.0.0.1:8000:8000 \
   ghcr.io/herp75/mcp-cookidoo:edge --transport http
 ```
+
+Without a token, the server only answers requests addressed to `localhost`, `127.0.0.1` or
+`[::1]` (`Host` header) and, from a browser, only pages served from this machine (`Origin`):
+this stops web pages from reaching it through DNS rebinding. Behind a reverse proxy or under
+another host name, set a token.
 
 Use `server.py` rather than `fastmcp run … --transport http`, which skips these checks.
 

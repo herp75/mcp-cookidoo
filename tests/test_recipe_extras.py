@@ -1,6 +1,7 @@
 """Copy to custom recipe, move in meal plan, and the hardened recipe image upload."""
 
 import os
+from dataclasses import replace
 from datetime import date
 from io import BytesIO
 from unittest.mock import AsyncMock, MagicMock
@@ -370,11 +371,38 @@ async def test_move_recipe_adds_before_removing(fake):
     names = [name for name, _ in fake.calls if "calendar" in name]
     assert names == [
         "get_recipes_in_calendar_week",
+        "get_recipes_in_calendar_week",
         "add_recipes_to_calendar",
         "remove_recipe_from_calendar",
     ]
     assert fake.called("add_recipes_to_calendar") == [(FRIDAY, ["r100001"])]
     assert fake.called("remove_recipe_from_calendar") == [(MONDAY, "r100001")]
+
+
+def _also_on_wednesday(fake):
+    monday, tuesday, wednesday = fake.days
+    fake.days = [monday, tuesday, replace(wednesday, recipes=list(monday.recipes))]
+
+
+async def test_move_to_a_day_it_is_already_planned_on_only_removes(fake):
+    _also_on_wednesday(fake)
+    await move(to_day="2026-11-11")
+    assert fake.called("add_recipes_to_calendar") == []
+    assert fake.called("remove_recipe_from_calendar") == [(MONDAY, "r100001")]
+
+
+async def test_failed_move_keeps_the_entry_already_on_the_new_day(fake):
+    _also_on_wednesday(fake)
+    calls = []
+
+    async def remove(day, recipe_id):
+        calls.append(day)
+        raise request_error("(500)")
+
+    fake.remove_recipe_from_calendar = remove
+    with pytest.raises(ToolError, match="nothing changed"):
+        await move(to_day="2026-11-11")
+    assert calls == [MONDAY]  # no "rollback" removing the entry that was already there
 
 
 async def test_move_custom_recipe_uses_custom_endpoints(fake):

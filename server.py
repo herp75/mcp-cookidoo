@@ -5,6 +5,7 @@ Main server file containing MCP tool definitions for interacting with Cookidoo.
 """
 
 import argparse
+import html
 import json
 import os
 import re
@@ -24,8 +25,8 @@ from starlette.middleware import Middleware
 import tools
 from cookidoo_service import CookidooService, load_cookidoo_settings
 from devices import BUILTIN_CATALOG, DEFAULT_DEVICE, Device, check_steps
-from guided import from_raw, to_instruction
-from schemas import CustomRecipe, Step
+from guided import read_step, to_instruction
+from schemas import MAX_MINUTES, CustomRecipe, Step
 from security import (
     BearerTokenMiddleware,
     check_http_config,
@@ -35,7 +36,7 @@ from security import (
     tool_error,
     validate_id,
 )
-from tools.common import DESTRUCTIVE, READ_ONLY, WRITE, require_confirm
+from tools.common import DESTRUCTIVE, READ_ONLY, WRITE, one_line, require_confirm
 
 # Redact secrets from every log record, whichever entry point starts the server
 install_log_redaction()
@@ -97,7 +98,8 @@ def _lines(value: list[str] | str, strip_numbering: bool = False) -> list[str]:
     """Accept a list, or a string with one item per line (commas are kept)."""
     items = value.split("\n") if isinstance(value, str) else value
     if strip_numbering:
-        items = [re.sub(r"^\s*(\d+[.)-]|[-•*])\s*", "", item) for item in items]
+        # Only a marker followed by a space: "1.5 l Wasser", "2-3 Minuten", "-20 °C" are text
+        items = [re.sub(r"^\s*(\d+[.)]|[-•*])\s+", "", item) for item in items]
     return [item.strip() for item in items if item.strip()]
 
 
@@ -159,8 +161,13 @@ def _minutes(seconds: int | None) -> str:
     return f"{round(seconds / 60)} min" if seconds else "?"
 
 
+def _whole_minutes(seconds: int | None) -> int:
+    """A time from Cookidoo, in seconds or missing, as the minutes CustomRecipe accepts."""
+    return min(max(1, round((seconds or 0) / 60)), MAX_MINUTES)
+
+
 def _strip_markup(text: str) -> str:
-    return re.sub(r"<[^>]+>", "", text).strip()
+    return html.unescape(re.sub(r"<[^>]+>", "", text)).strip()
 
 
 @mcp.tool(annotations=READ_ONLY)
@@ -183,7 +190,7 @@ async def connect_to_cookidoo() -> str:
 async def search_recipes(
     query: str = "",
     ingredients: str = "",
-    max_total_time: int | None = None,
+    max_total_time: Annotated[int | None, Field(ge=1)] = None,
     max_results: Annotated[int, Field(ge=1, le=50)] = 10,
 ) -> str:
     """
@@ -214,7 +221,7 @@ async def search_recipes(
         return "No recipes found. Try fewer or more common ingredients."
     lines = [f"Found {len(result.recipes)} recipes:", ""]
     for i, hit in enumerate(result.recipes, 1):
-        lines.append(f"{i}. {hit.name}\n   ID: {hit.id} | {hit.url}")
+        lines.append(f"{i}. {one_line(hit.name)}\n   ID: {hit.id} | {hit.url}")
     return "\n".join(lines)
 
 
@@ -232,32 +239,34 @@ async def get_recipe_details(recipe_id: str) -> str:
         raise tool_error("Failed to get recipe details", e) from e
 
     lines = [
-        f"Name: {recipe.name}",
+        f"Name: {one_line(recipe.name)}",
         f"ID: {recipe.id}",
         f"Servings: {recipe.serving_size}",
         f"Active time: {_minutes(recipe.active_time)}",
         f"Total time: {_minutes(recipe.total_time)}",
-        f"Difficulty: {recipe.difficulty}",
+        f"Difficulty: {one_line(recipe.difficulty)}",
     ]
     if recipe.utensils:
-        lines.append(f"Utensils: {', '.join(recipe.utensils)}")
+        lines.append(f"Utensils: {', '.join(map(one_line, recipe.utensils))}")
 
     lines += ["", "Ingredients:"]
     for ingredient in recipe.ingredients:
-        line = "  - " + " ".join(p for p in (ingredient.description, ingredient.name) if p)
+        parts = (ingredient.description, ingredient.name)
+        line = "  - " + " ".join(one_line(p) for p in parts if p)
         if ingredient.preparation:
-            line += f", {ingredient.preparation}"
+            line += f", {one_line(ingredient.preparation)}"
         lines.append(line)
 
     step_number = 0
     for group in recipe.step_groups:
-        lines += ["", f"{group.title}:" if group.title else "Steps:"]
+        lines += ["", f"{one_line(group.title)}:" if group.title else "Steps:"]
         for step in group.recipe_steps:
             step_number += 1
-            lines.append(f"{step_number}. {_strip_markup(step.formatted_text)}")
+            lines.append(f"{step_number}. {one_line(_strip_markup(step.formatted_text))}")
 
     if recipe.notes:
-        lines += ["", "Notes:", *(f"  - {_strip_markup(note)}" for note in recipe.notes)]
+        notes = (one_line(_strip_markup(note)) for note in recipe.notes)
+        lines += ["", "Notes:", *(f"  - {note}" for note in notes)]
     lines += ["", f"URL: {recipe.url}"]
     return "\n".join(lines)
 
@@ -273,7 +282,8 @@ async def list_custom_recipes() -> str:
     if not recipes:
         return "No custom recipes on this account yet."
     return "\n".join(
-        f"- {r.name} ({r.serving_size} servings, {_minutes(r.total_time)})\n  ID: {r.id} | {r.url}"
+        f"- {one_line(r.name)} ({r.serving_size} servings, {_minutes(r.total_time)})\n"
+        f"  ID: {r.id} | {r.url}"
         for r in recipes
     )
 
@@ -293,16 +303,33 @@ async def get_custom_recipe(recipe_id: str) -> str:
     except Exception as e:
         raise tool_error("Failed to get custom recipe", e) from e
 
+    steps, lost_in = [], []
+    for step, lost in map(read_step, instructions):
+        if lost:
+            lost_in.append(len(steps) + 1)
+        if step:
+            steps.append(step if isinstance(step, str) else step.model_dump())
+    total_time = _whole_minutes(r.total_time)
     recipe = {
         "name": r.name,
         "ingredients": r.ingredients,
-        "steps": [s if isinstance(s, str) else s.model_dump() for s in map(from_raw, instructions)],
+        "steps": steps,
         "servings": r.serving_size,
-        "prep_time": max(1, round(r.active_time / 60)),
-        "total_time": max(1, round(r.total_time / 60)),
+        # Cookidoo may store an active time longer than the total; the upload refuses that
+        "prep_time": min(_whole_minutes(r.active_time), total_time),
+        "total_time": total_time,
         "hints": r.hints or None,
     }
-    return f"URL: {r.url}\n\n{json.dumps(recipe, indent=2, ensure_ascii=False)}"
+    warning = ""
+    if lost_in:
+        numbers = ", ".join(map(str, lost_in))
+        warning = (
+            f"Warning: step(s) {numbers} have machine settings this server cannot represent "
+            "(e.g. a mode it does not know). They are missing below, and update_custom_recipe "
+            "would remove them from Cookidoo (the step text stays). Tell the user before "
+            "updating, or let them edit this recipe in the Cookidoo app.\n\n"
+        )
+    return f"{warning}URL: {r.url}\n\n{json.dumps(recipe, indent=2, ensure_ascii=False)}"
 
 
 @mcp.tool(annotations=READ_ONLY)
@@ -456,7 +483,8 @@ def create_thermomix_recipe(dish: str, language: str = "en") -> str:
     """
     filename = PROMPT_FILES.get(language.lower()[:2], "prompt.md")
     template = (PROMPTS_DIR / filename).read_text(encoding="utf-8")
-    return re.sub(r"\[[^\]]*\]", f'"{dish}"', template, count=1)
+    # A function as replacement: the dish name is text, not a pattern (backslashes stay as typed)
+    return re.sub(r"\[[^\]]*\]", lambda _: f'"{dish}"', template, count=1)
 
 
 def http_middleware(token: str | None) -> list[Middleware]:
