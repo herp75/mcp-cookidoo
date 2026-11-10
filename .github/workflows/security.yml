@@ -23,7 +23,7 @@ jobs:
       - name: Audit locked dependencies
         run: |
           uv export --locked --all-groups --no-emit-project -o requirements-audit.txt
-          uvx pip-audit --strict --disable-pip -r requirements-audit.txt
+          uvx pip-audit@2.10.1 --strict --disable-pip -r requirements-audit.txt
 
   gitleaks:
     runs-on: ubuntu-latest

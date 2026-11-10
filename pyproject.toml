@@ -3,7 +3,7 @@ name = "cookidoo-mcp-server"
 version = "2.0.0"
 description = "MCP server for interacting with the Thermomix Cookidoo platform"
 readme = "README.md"
-license = "MIT"
+license = "MIT AND Apache-2.0"  # recipe_images.py: Apache-2.0, see NOTICE
 requires-python = ">=3.12"
 dependencies = [
     "fastmcp>=4.1.2,<5",

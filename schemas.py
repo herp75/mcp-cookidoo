@@ -10,6 +10,11 @@ from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag, model_val
 
 PLACEHOLDER = "{settings}"
 MAX_TIME = 359940  # 99 h 59 min, the longest duration Cookidoo accepts
+# Sanity limits for a whole recipe. Cookidoo stores more (tested up to 200 servings and
+# 100,000 min); catalogue recipes copied as custom ones often have 24 or more servings and
+# proofing or marinating times beyond a day.
+MAX_SERVINGS = 200
+MAX_MINUTES = 30 * 24 * 60  # 30 days
 
 Speed = Literal[
     "soft", "0.5", "1", "1.5", "2", "2.5", "3", "3.5", "4", "4.5", "5",
@@ -203,9 +208,13 @@ class CustomRecipe(BaseModel):
         description="Cooking steps: plain text, or a Step with machine settings and links",
         min_length=1,
     )
-    servings: int = Field(default=4, description="Number of servings", ge=1, le=20)
-    prep_time: int = Field(default=30, description="Preparation time in minutes", ge=1, le=1440)
-    total_time: int = Field(default=60, description="Total cooking time in minutes", ge=1, le=1440)
+    servings: int = Field(default=4, description="Number of servings", ge=1, le=MAX_SERVINGS)
+    prep_time: int = Field(
+        default=30, description="Preparation time in minutes", ge=1, le=MAX_MINUTES
+    )
+    total_time: int = Field(
+        default=60, description="Total cooking time in minutes", ge=1, le=MAX_MINUTES
+    )
     hints: list[str] | None = Field(default=None, description="Optional cooking tips or hints")
 
     @model_validator(mode="after")

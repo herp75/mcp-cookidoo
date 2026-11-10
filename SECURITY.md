@@ -21,6 +21,8 @@ Only the latest release receives security fixes.
 - **HTTP mode** (`--transport http`) binds to `127.0.0.1` by default. Binding to any other
   host requires `COOKIDOO_MCP_TOKEN` (at least 32 random characters), which every request
   must send as `Authorization: Bearer <token>`. The server refuses to start otherwise.
+  Without a token, requests must carry a loopback `Host` and, if any, a loopback `Origin`
+  (DNS-rebinding protection; FastMCP does not check either). WebSocket requests are refused.
   Only use it on a trusted network; it does not terminate TLS itself, so put it behind a
   TLS reverse proxy if it leaves the machine. `/health` returns only `{"status":"ok"}`.
   Note: `fastmcp run … --transport http` bypasses these checks; use `server.py` instead.

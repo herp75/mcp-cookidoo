@@ -5,6 +5,36 @@
 ### Added
 - Weekly "Upstream changes" workflow: opens (or comments on) an issue when
   alexandrepa/mcp-cookidoo has commits that are not in `main`, each upstream head reported once
+- `get_custom_recipe` warns when steps hold machine settings this server cannot represent,
+  which `update_custom_recipe` would remove
+
+### Fixed
+- `create_thermomix_recipe` prompt failed on dish names containing a backslash
+- Steps starting with a quantity lost it: "1.5 l Wasser" became "5 l Wasser", "2-3 Minuten"
+  became "3 Minuten". Numbering is only removed when a space follows ("1. ", "2) ", "- ")
+- Recipes read with `get_custom_recipe` could not always be saved again: more than 20
+  servings, times over 24 h, no active time, or an active time longer than the total.
+  Limits are now 200 servings and 30 days (also for `copy_recipe_to_custom`)
+- A failed `move_in_meal_plan` to a day the recipe was already planned on removed that entry
+  during the rollback; such a move now only removes the recipe from the old day
+- `connect_to_cookidoo` closed the session other running calls were using ("Session is
+  closed"); a replaced session now stays open for a minute
+- Once Cookidoo no longer accepted the refresh token, every call failed until
+  `connect_to_cookidoo`; the server now logs in again by itself
+- HTML entities (`&amp;`) in catalogue steps and notes are decoded
+
+### Changed
+- A refused automatic login is not retried for a minute, and a failed editor-page read falls
+  back to the built-in device limits for five minutes, instead of new attempts on every call
+- `search_recipes` refuses a `max_total_time` below 1
+- Catalogue names, ingredients and steps are kept on one line in `search_recipes`,
+  `get_recipe_details` and `list_custom_recipes`, as in the other tools
+- `pip-audit` is pinned in CI; the license field reads `MIT AND Apache-2.0`
+
+### Security
+- HTTP mode without a token rejects requests whose `Host` or `Origin` is not local (DNS
+  rebinding) and refuses WebSocket connections
+- URL- and JSON-encoded forms of the password are masked too
 
 ## [2.0.0] - 2026-11-10
 

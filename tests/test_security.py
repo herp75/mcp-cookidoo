@@ -107,6 +107,65 @@ async def test_http_without_token_is_open_on_loopback():
     assert response.status_code == 200
 
 
+@pytest.mark.parametrize(
+    "headers",
+    [
+        {"host": "evil.example"},  # DNS rebinding: the attacker's name resolving to 127.0.0.1
+        {"host": "127.0.0.1.evil.example:8000"},
+        {"origin": "https://evil.example"},
+        {"origin": "null"},
+    ],
+)
+async def test_http_without_token_refuses_requests_from_web_pages(headers):
+    async with http_client(token=None) as client:
+        response = await client.post("/mcp", json=INITIALIZE, headers={**MCP_HEADERS, **headers})
+    assert response.status_code == 403
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [
+        {"host": "localhost:8000"},
+        {"host": "[::1]:8000", "origin": "http://[::1]:8000"},
+        {"origin": "http://localhost:6274"},  # e.g. the MCP Inspector
+    ],
+)
+async def test_http_without_token_accepts_local_requests(headers):
+    async with http_client(token=None) as client:
+        response = await client.post("/mcp", json=INITIALIZE, headers={**MCP_HEADERS, **headers})
+    assert response.status_code == 200
+
+
+async def test_http_with_token_accepts_any_host():
+    async with http_client() as client:
+        headers = {"host": "mcp.example", "authorization": f"Bearer {TOKEN}"}
+        response = await client.post("/mcp", json=INITIALIZE, headers={**MCP_HEADERS, **headers})
+    assert response.status_code == 200
+
+
+async def test_websocket_connections_are_refused():
+    app, sent = AsyncMock(), []
+
+    async def send(message):
+        sent.append(message)
+
+    await BearerTokenMiddleware(app, token=None)({"type": "websocket"}, AsyncMock(), send)
+    assert sent == [{"type": "websocket.close", "code": 1008}]
+    app.assert_not_awaited()
+
+
+def test_encoded_forms_of_the_password_are_masked(monkeypatch):
+    monkeypatch.setattr(security, "_secrets", set())
+    register_secret('p@ss w"rd&é')
+    for form in (
+        "p%40ss+w%22rd%26%C3%A9",  # form body
+        "p%40ss%20w%22rd%26%C3%A9",  # URL
+        'p@ss w\\"rd&\\u00e9',  # JSON
+        'p@ss w\\"rd&é',  # JSON, not ASCII-escaped
+    ):
+        assert redact(f"password sent as {form}.") == "password sent as ***."
+
+
 async def test_middleware_compares_in_constant_time(monkeypatch):
     compare = MagicMock(return_value=True)
     monkeypatch.setattr(security.hmac, "compare_digest", compare)

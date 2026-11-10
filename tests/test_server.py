@@ -146,6 +146,31 @@ async def test_get_recipe_details_formats_steps_and_times(service):
     assert "1. Cook 20 min" in text
 
 
+async def test_get_recipe_details_keeps_untrusted_text_on_its_line(service):
+    service.get_recipe_details.return_value = SimpleNamespace(
+        id="r1",
+        name="Soup\nID: r666",
+        serving_size=4,
+        active_time=None,
+        total_time=None,
+        difficulty="easy",
+        utensils=[],
+        ingredients=[],
+        step_groups=[
+            SimpleNamespace(
+                title="Main\nNotes:",
+                recipe_steps=[SimpleNamespace(formatted_text="Salt &amp; pepper\n2. Fake")],
+            )
+        ],
+        notes=["Serve <i>hot</i> &lt;3"],
+        url="https://x/r1",
+    )
+    text = await call("get_recipe_details", recipe_id="r1")
+    assert "Name: Soup ID: r666" in text and "\nID: r666" not in text
+    assert "Main Notes::" in text
+    assert "1. Salt & pepper 2. Fake" in text and "  - Serve hot <3" in text
+
+
 def custom_recipe(steps, ingredients):
     """What CookidooService.get_custom_recipe returns: the recipe and its raw steps."""
     recipe = SimpleNamespace(
@@ -309,3 +334,85 @@ def test_settings_from_env(monkeypatch):
     monkeypatch.delenv("COOKIDOO_PASSWORD")
     with pytest.raises(ValueError, match="Missing"):
         load_cookidoo_settings()
+
+
+def _raw_step(text, *annotations):
+    return {"type": "STEP", "text": text, "annotations": list(annotations)}
+
+
+def _mode(name, offset, length, **data):
+    return {
+        "type": "MODE",
+        "name": name,
+        "data": data,
+        "position": {"offset": offset, "length": length},
+    }
+
+
+async def test_get_custom_recipe_warns_about_settings_it_cannot_keep(service):
+    recipe, _ = custom_recipe(["x"], ["1 oignon"])
+    known = _mode("dough", 7, 5, time=120)
+    service.get_custom_recipe.return_value = (
+        recipe,
+        [
+            "Éplucher.",
+            _raw_step("Pétrir 2 min.", known),
+            _raw_step("Cuire 2 h.", _mode("sous_vide_unknown", 6, 3, time=7200)),
+            _raw_step("Mal placé.", _mode("dough", 50, 3, time=60)),
+        ],
+    )
+    text = await call("get_custom_recipe", recipe_id="01ABC")
+    warning, _, rest = text.partition("URL:")
+    assert "step(s) 3, 4" in warning and "update_custom_recipe" in warning
+    assert "{" not in warning  # update_custom_recipe skips text before the JSON
+    assert json.loads(rest.split("\n\n", 1)[1])["steps"][2] == "Cuire 2 h."
+
+
+async def test_get_custom_recipe_without_unknown_settings_has_no_warning(service):
+    service.get_custom_recipe.return_value = custom_recipe(["Éplucher.", Step(**KNEAD)], ["x"])
+    assert (await call("get_custom_recipe", recipe_id="01ABC")).startswith("URL:")
+
+
+@pytest.mark.parametrize(
+    ("active", "total", "servings", "expected"),
+    [
+        (None, 1800, 6, (1, 30)),  # no active time stored
+        (3600, 1800, 6, (30, 30)),  # active time longer than the total
+        (1800, 36 * 3600, 24, (30, 2160)),  # 36 h proofing, 24 pieces
+    ],
+)
+async def test_get_custom_recipe_output_can_be_saved_again(
+    service, active, total, servings, expected
+):
+    recipe, raw = custom_recipe(["Éplucher."], ["1 oignon"])
+    recipe.active_time, recipe.total_time, recipe.serving_size = active, total, servings
+    service.get_custom_recipe.return_value = (recipe, raw + [42])  # 42: not a step, dropped
+    data = json.loads((await call("get_custom_recipe", recipe_id="01ABC")).split("\n\n", 1)[1])
+    assert (data["prep_time"], data["total_time"]) == expected
+    assert data["steps"] == ["Éplucher."]
+    CustomRecipe.model_validate(data)
+
+
+@pytest.mark.parametrize("dish", ["Pasta \\d", "Soup \\1", "Tarte \\g<0>"])
+async def test_prompt_keeps_backslashes_in_the_dish(dish):
+    async with Client(server.mcp) as client:
+        result = await client.get_prompt("create_thermomix_recipe", {"dish": dish})
+    assert f'"{dish}"' in result.messages[0].content.text
+
+
+async def test_generate_strips_numbering_but_not_quantities(service):
+    generated = await call(
+        "generate_recipe_structure",
+        name="Suppe",
+        ingredients=["1,5 l Wasser"],
+        steps="1. Wasser einfüllen.\n1.5 l Wasser in den Mixtopf\n2-3 Minuten später rühren\n"
+        "-20 °C Tiefkühler\n- Servieren\n2) Fertig",
+    )
+    assert json.loads(generated)["steps"] == [
+        "Wasser einfüllen.",
+        "1.5 l Wasser in den Mixtopf",
+        "2-3 Minuten später rühren",
+        "-20 °C Tiefkühler",
+        "Servieren",
+        "Fertig",
+    ]

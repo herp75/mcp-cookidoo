@@ -16,7 +16,7 @@
   "homepage": "https://github.com/herp75/mcp-cookidoo",
   "documentation": "https://github.com/herp75/mcp-cookidoo#readme",
   "support": "https://github.com/herp75/mcp-cookidoo/issues",
-  "license": "MIT",
+  "license": "MIT AND Apache-2.0",
   "keywords": ["cookidoo", "thermomix", "recipes", "meal-plan", "shopping-list"],
   "server": {
     "type": "uv",

@@ -12,6 +12,7 @@ import logging
 import re
 from collections.abc import Iterable
 from typing import Any
+from urllib.parse import quote, quote_plus, urlsplit
 
 from fastmcp.exceptions import ToolError
 
@@ -43,7 +44,16 @@ _PATTERNS = [
 def register_secret(value: str | None) -> None:
     """Remember a secret value so that redact() masks it."""
     if value and len(value) >= 4:
-        _secrets.add(value)
+        # Also as it appears in a form or URL, and inside a JSON string
+        _secrets.update(
+            {
+                value,
+                quote(value, safe=""),
+                quote_plus(value),
+                json.dumps(value)[1:-1],
+                json.dumps(value, ensure_ascii=False)[1:-1],
+            }
+        )
 
 
 def redact(text: object) -> str:
@@ -156,10 +166,41 @@ def check_http_config(host: str, token: str | None) -> None:
         )
 
 
+_LOOPBACK_NAMES = {"localhost", "127.0.0.1", "::1"}
+
+
+def _header(scope: dict, name: bytes) -> str | None:
+    for key, value in scope.get("headers", []):
+        if key.lower() == name:
+            return value.decode("latin-1")
+    return None
+
+
+def _is_local_host(host_header: str | None) -> bool:
+    """A Host header naming this machine: localhost, 127.0.0.1 or [::1], any port."""
+    if not host_header:
+        return False
+    host = urlsplit(f"//{host_header}").hostname
+    return host in _LOOPBACK_NAMES
+
+
+def _is_local_origin(origin: str | None) -> bool:
+    """No Origin (not a browser) or a page served from this machine."""
+    if origin is None:
+        return True
+    parts = urlsplit(origin)
+    return parts.scheme in ("http", "https") and parts.hostname in _LOOPBACK_NAMES
+
+
 class BearerTokenMiddleware:
     """
     ASGI middleware: answers GET /health, and requires `Authorization: Bearer <token>`
     on every other request when a token is configured. Tokens are compared in constant time.
+
+    Without a token (only allowed on loopback), requests must name this machine in Host and,
+    from a browser, come from a page on this machine (Origin). That stops web pages from
+    reaching the server through DNS rebinding; FastMCP itself does not check either header.
+    WebSocket connections are refused: the MCP transports do not use them.
     """
 
     def __init__(self, app: Any, token: str | None, health_path: str = "/health"):
@@ -168,11 +209,19 @@ class BearerTokenMiddleware:
         self._health_path = health_path
 
     async def __call__(self, scope: dict, receive: Any, send: Any) -> None:
-        if scope["type"] != "http":
+        if scope["type"] == "websocket":
+            await send({"type": "websocket.close", "code": 1008})
+            return
+        if scope["type"] != "http":  # lifespan
             await self.app(scope, receive, send)
             return
         if scope.get("path") == self._health_path and scope.get("method") in ("GET", "HEAD"):
             await _send_json(send, 200, {"status": "ok"})
+            return
+        if self._token is None and not (
+            _is_local_host(_header(scope, b"host")) and _is_local_origin(_header(scope, b"origin"))
+        ):
+            await _send_json(send, 403, {"error": "forbidden: not a local request"})
             return
         if self._token is not None and not self._authorized(scope):
             await _send_json(

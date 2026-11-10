@@ -73,7 +73,9 @@ The per-mode limits are a snapshot of the Cookidoo editor's script; the weekly l
      deletes or overwrites (also "replace", "move", "rename"); `*_IDEMPOTENT` if
      repeating it changes nothing more.
    - Irreversible deletions (`delete_*`, `clear_*`) take `confirm: bool = False` and call
-     `require_confirm`.
+     `require_confirm`. Tools that overwrite (`update_custom_recipe`, the image upload) do
+     not: they are marked destructive, say what is lost in the docstring, and the server
+     instructions require the user's approval of the recipe before it is saved.
    - Validate IDs with `validate_id(s)` before they reach a URL; cap lists (`IdList`).
    - The docstring is what the model reads: one line on what it does, then its side
      effects (what is lost, whether each call creates another item), then `Args:`.
