@@ -1,0 +1,79 @@
+name: Upstream changes
+
+# Weekly: opens (or comments on) an issue when alexandrepa/mcp-cookidoo has commits that are
+# not in this fork's main, so they can be reviewed and merged. Reports each upstream head once.
+
+on:
+  schedule:
+    - cron: "41 6 * * 1" # Mondays 06:41 UTC
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: upstream-check
+  cancel-in-progress: false
+
+env:
+  UPSTREAM: alexandrepa/mcp-cookidoo
+  TITLE: Upstream has new commits
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Compare with upstream
+        id: compare
+        run: |
+          git fetch --quiet "https://github.com/$UPSTREAM.git" main
+          head=$(git rev-parse FETCH_HEAD)
+          count=$(git rev-list --count HEAD..FETCH_HEAD)
+          echo "head=$head" >> "$GITHUB_OUTPUT"
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          echo "$count upstream commit(s) not in main (upstream head $head)"
+          if [ "$count" -gt 0 ]; then
+            {
+              echo "[$UPSTREAM](https://github.com/$UPSTREAM) has $count commit(s) that are not in \`main\`"
+              echo "(upstream head [\`${head:0:7}\`](https://github.com/$UPSTREAM/commit/$head)):"
+              echo
+              # Subjects are upstream text: in code spans, so they cannot mention or link anyone
+              git log --no-merges --format='%H%x09%s' -n 30 HEAD..FETCH_HEAD |
+                while IFS=$'\t' read -r sha subject; do
+                  subject=${subject//\`/\'}
+                  echo "- [\`${sha:0:7}\`](https://github.com/$UPSTREAM/commit/$sha) \`$subject\`"
+                done
+              if [ "$count" -gt 30 ]; then echo "- … and more"; fi
+              echo
+              echo "Review and merge them locally:"
+              echo
+              echo '```bash'
+              echo "git fetch upstream && git log --oneline main..upstream/main"
+              echo "git switch -c upstream-sync main && git merge upstream/main"
+              echo '```'
+              echo
+              echo "<!-- upstream-head: $head -->"
+            } > report.md
+          fi
+      - name: Open or update the issue
+        if: steps.compare.outputs.count != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ steps.compare.outputs.head }}
+        run: |
+          number=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "\"$TITLE\" in:title" --json number --jq '.[0].number // empty')
+          if [ -z "$number" ]; then
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --body-file report.md
+          elif gh issue view "$number" --repo "$GITHUB_REPOSITORY" --json body,comments \
+              --jq '[.body, .comments[].body] | join("\n")' | grep -q "upstream-head: $HEAD_SHA"; then
+            echo "Upstream head $HEAD_SHA already reported in #$number"
+          else
+            gh issue comment "$number" --repo "$GITHUB_REPOSITORY" --body-file report.md
+          fi
