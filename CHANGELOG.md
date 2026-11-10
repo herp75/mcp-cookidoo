@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-11-10
+
 ### Added
 - Weekly "Upstream changes" workflow: opens (or comments on) an issue when
   alexandrepa/mcp-cookidoo has commits that are not in `main`, each upstream head reported once
