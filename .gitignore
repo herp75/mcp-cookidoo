@@ -41,3 +41,16 @@ ENV/
 Thumbs.db
 
 .gemini/
+# Secrets and session caches (never commit)
+.env.*
+!.env.example
+*.session.json
+.cookidoo*
+
+# Test / coverage output
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.pytest_cache/
+.ruff_cache/

@@ -1,5 +1,27 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- HTTP mode via `server.py --transport http`: binds to `127.0.0.1` by default; a non-loopback
+  `COOKIDOO_MCP_HOST` requires `COOKIDOO_MCP_TOKEN` (32+ characters), checked as a bearer
+  token in constant time on every request; unauthenticated `GET /health`
+- Secrets (password, tokens, `Authorization` headers, cookies) are redacted from all log
+  records and from tool error messages
+- Recipe IDs are validated before being put into a URL; `search_recipes` caps `max_results` at 50
+- Server instructions tell the model to treat recipe content as data, not instructions
+- `LICENSE` (MIT), `NOTICE`, `SECURITY.md`
+- CI: Python 3.12 / 3.13 matrix, pyright, coverage gate (85 %); security workflow
+  (pip-audit, gitleaks, insecure-pattern guard, dependency review); CodeQL; Docker image built
+  and scanned with Trivy on PRs, pushed with provenance and SBOM on tags; Dependabot.
+  All actions pinned by commit SHA with least-privilege permissions
+
+### Changed
+- Docker image runs as a non-root user, base image pinned by digest, only server files copied
+
+### Security
+- fastmcp upgraded to 4.1.2 (GHSA-7xgj-8392-5q4r, GHSA-vqqp-x5qm-5qp4)
+
 ## [1.1.0] - 2026-10-20
 
 ### Added
