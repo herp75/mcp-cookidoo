@@ -2,7 +2,24 @@
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-10
+
+Major release of the fork: 25 new tools, device-aware recipe validation, a security baseline
+and release automation. No existing tool was removed or renamed and no parameter changed.
+
+### Breaking
+- Recipe settings are checked against the Cookidoo editor's limits for the target Thermomix
+  (see Added). Some recipe JSON accepted by 1.1.0 is refused, e.g. blend at speed 10, dough
+  over 20 min, browning or steaming for a TM6, Varoma on a TM7. Recipes already on Cookidoo
+  stay readable and are only checked when saved again
+- `COOKIDOO_DEVICE` no longer accepts TM31 and no longer defaults to TM6 (see Changed)
+
 ### Added
+- Release workflow on `v*` tags: full CI and security checks, then the Docker image (signed
+  keyless with cosign), a Claude Desktop bundle (`.mcpb`, uv runtime) with build provenance,
+  a GitHub Release with this changelog section, and the MCP Registry entry
+  `io.github.herp75/mcp-cookidoo` (`server.json`). No PyPI package
+- `edge` and `sha-*` Docker images are signed too
 - `edge` Docker image (amd64/arm64, provenance and SBOM) pushed to GHCR on every change on
   `main`, besides the version tags of releases
 - The scheduled live run opens (or comments on) an issue "Live tests failed"
@@ -74,6 +91,10 @@
   All actions pinned by commit SHA with least-privilege permissions
 
 ### Fixed
+- Several tool calls at once could fail with "Session is closed": each started its own first
+  login and closed the session the others were using. They now share one login; a forced
+  re-login (`connect_to_cookidoo`) swaps the session only after it succeeded
+- Empty optional settings (as passed by Claude Desktop for blank fields) use the defaults
 - The Docker workflow did not rebuild the image for changes in `tools/` or the prompts
 - The mode catalog read only the first chunk of the editor page, so it fell back to the
   built-in list on real connections (found by the live tests)

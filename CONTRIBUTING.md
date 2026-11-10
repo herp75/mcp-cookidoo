@@ -65,3 +65,15 @@ contain real names, e-mail addresses or IDs.
   is not obvious.
 - The PR description says what changed, how it was tested, and anything a reviewer should
   look at closely (security-relevant changes in particular).
+
+## Releases
+
+1. On a branch: set the version in `pyproject.toml` and `server.json` (both the `version` and
+   the image tag in `identifier`), run `uv lock`, and turn `## [Unreleased]` in
+   `CHANGELOG.md` into `## [X.Y.Z] - YYYY-MM-DD` with a new empty `[Unreleased]` above.
+   SemVer: a changed or removed tool parameter, or recipe JSON that is no longer accepted,
+   is a major version. `tests/test_release_files.py` checks that the files agree.
+2. Merge, then tag the merge commit on `main`: `git tag vX.Y.Z && git push origin vX.Y.Z`.
+3. The Release workflow checks tag and files, runs CI and the security checks, then
+   publishes the signed image, the `.mcpb` bundle, the GitHub Release and the MCP Registry
+   entry. Nothing is published to PyPI.
