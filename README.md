@@ -28,6 +28,10 @@ cp .env.example .env   # then fill in your Cookidoo credentials
 | `COOKIDOO_COUNTRY` | `fr` | Cookidoo site country code (`fr`, `de`, `gb`, `es`, …) |
 | `COOKIDOO_LANGUAGE` | `fr-FR` | Site language |
 | `COOKIDOO_DEVICE` | `TM6` | Thermomix model set on created recipes (`TM5`, `TM6`, `TM7`) |
+| `COOKIDOO_MCP_TRANSPORT` | `stdio` | `stdio` or `http` (same as `--transport`) |
+| `COOKIDOO_MCP_HOST` | `127.0.0.1` | HTTP bind address. Any non-loopback address requires `COOKIDOO_MCP_TOKEN` |
+| `COOKIDOO_MCP_PORT` | `8000` | HTTP port |
+| `COOKIDOO_MCP_TOKEN` | — | Bearer token for HTTP mode, at least 32 characters (e.g. `openssl rand -hex 32`) |
 
 ## Usage
 
@@ -73,10 +77,22 @@ A prebuilt image (amd64 / arm64) is published for each release, no Python needed
 
 To build it yourself instead: `docker build -t cookidoo-mcp .`
 
-### HTTP / development
+### HTTP
 
 ```bash
-uv run fastmcp run fastmcp.json --transport http   # HTTP server
+uv run server.py --transport http                   # http://127.0.0.1:8000/mcp
+
+# Reachable from other machines: a token is required, the server refuses to start without one
+COOKIDOO_MCP_TOKEN=$(openssl rand -hex 32) COOKIDOO_MCP_HOST=0.0.0.0 uv run server.py --transport http
+```
+
+Clients then send `Authorization: Bearer <token>`. `GET /health` returns `{"status":"ok"}`.
+With Docker, publish the port on loopback only: `docker run -p 127.0.0.1:8000:8000 …`.
+Use `server.py` rather than `fastmcp run … --transport http`, which skips these checks.
+
+### Development
+
+```bash
 uv run fastmcp dev inspector fastmcp.json           # MCP Inspector
 ```
 
@@ -131,12 +147,27 @@ Modes are written with their name, so the text should not repeat it ("then start
 ingredient list. Invalid settings and links are rejected. `get_custom_recipe` returns steps
 in the same format, so a recipe keeps its settings and links when edited.
 
+## Security
+
+- The server stores your real Cookidoo password (Cookidoo has no OAuth): use a unique password.
+- Prefer stdio. Use HTTP only with a token, on a trusted network.
+- TLS certificate verification is always on; secrets are redacted from logs and error messages.
+- Recipe content is untrusted input to the model. Keep your client's approval prompt on for
+  write tools.
+
+See [SECURITY.md](SECURITY.md) for the threat model and how to report a vulnerability.
+
 ## Development
 
 ```bash
-uv run pytest
+uv sync
+uv run pytest --cov                    # tests, coverage must stay at 85 % or more
 uv run ruff check . && uv run ruff format .
+uv run pyright
+scripts/check_insecure_patterns.sh     # TLS / bind-address guard, also run in CI
 ```
+
+CI also runs pip-audit, gitleaks, CodeQL, dependency review and a Trivy scan of the Docker image.
 
 ## Acknowledgments
 
@@ -144,4 +175,4 @@ This project is built on top of [cookidoo-api](https://github.com/miaucl/cookido
 
 ## License
 
-MIT
+MIT, see [LICENSE](LICENSE) and [NOTICE](NOTICE).

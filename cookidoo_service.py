@@ -2,11 +2,20 @@
 Cookidoo Service
 
 Module to encapsulate all cookidoo-api logic for interacting with the Cookidoo platform.
+
+SECURITY: the aiohttp ClientSession below must keep its default TLS certificate
+verification. Never turn off the ssl argument, pass a permissive SSLContext or use a
+connector that skips certificate checks: the Cookidoo password is sent over this
+connection. CI fails on such code.
+
+Login tokens and cookies only live in memory, inside this session. If they are ever cached
+on disk, write them with mode 0600 under the user's config directory, never in the repo.
 """
 
 import asyncio
 import os
 from dataclasses import dataclass
+from typing import Any, cast
 
 from aiohttp import ClientSession
 from cookidoo_api import (
@@ -29,6 +38,7 @@ from dotenv import load_dotenv
 
 from guided import to_instruction
 from schemas import CustomRecipe
+from security import register_secret
 
 
 @dataclass(frozen=True)
@@ -61,6 +71,8 @@ def load_cookidoo_settings() -> CookidooSettings:
             "Missing Cookidoo credentials. Please set COOKIDOO_EMAIL and "
             "COOKIDOO_PASSWORD in your environment or .env file"
         )
+
+    register_secret(password)
 
     device = os.getenv("COOKIDOO_DEVICE", "TM6").upper()
     try:
@@ -107,7 +119,7 @@ class CookidooService:
                     f"language '{self.settings.language}'"
                 )
 
-            self._session = ClientSession()
+            self._session = ClientSession()  # default TLS verification: keep it that way
             try:
                 client = Cookidoo(
                     session=self._session,
@@ -169,7 +181,10 @@ class CookidooService:
 
         await api._ensure_endpoints()
         url = api.api_endpoint / api._path("search:home").format(locale=locale)
-        result = await api._request_json("get", url, "search recipes", params=params)
+        # The library types params as a dict, but aiohttp accepts (and we need) repeated keys
+        result: Any = await api._request_json(
+            "get", url, "search recipes", params=cast(Any, params)
+        )
         if not result:
             return CookidooSearchResult(recipes=[], total=0)
         return cookidoo_search_result_from_json(result, api.localization)
@@ -194,7 +209,7 @@ class CookidooService:
         url = api.api_endpoint / api._path("customer-recipes:recipe-details").format(
             **api.localization.__dict__, id=recipe_id
         )
-        result = await api._request_json(
+        result: Any = await api._request_json(
             "get", url, "loading custom recipe", headers={"ACCEPT": CUSTOM_RECIPES_PATH_ACCEPT}
         )
         recipe = cookidoo_custom_recipe_from_json(result, api.localization)

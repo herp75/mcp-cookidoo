@@ -76,7 +76,7 @@ class TurboSettings(_Settings):
     """Turbo pulses."""
 
     mode: Literal["turbo"]
-    time: Literal[0.5, 1, 2] = Field(
+    time: Literal[0.5, 1, 2] = Field(  # pyright: ignore[reportInvalidTypeForm]
         ..., description="Duration of each pulse in seconds: 0.5, 1 or 2"
     )
     pulses: int = Field(default=1, description="Number of pulses", ge=1, le=10)
