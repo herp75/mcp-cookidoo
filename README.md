@@ -54,6 +54,13 @@ claude mcp add cookidoo -- uv run --directory /path/to/mcp-cookidoo server.py
 
 ### Claude Desktop
 
+**Bundle (easiest):** download `mcp-cookidoo-<version>.mcpb` from the
+[latest release](https://github.com/herp75/mcp-cookidoo/releases/latest) and open it with
+Claude Desktop. It asks for your Cookidoo e-mail, password (kept in the system's secure
+storage), site and Thermomix; Claude Desktop installs Python and the dependencies itself.
+
+**From a checkout:**
+
 Add to `claude_desktop_config.json`:
 
 ```json
@@ -87,6 +94,21 @@ in an env file (`chmod 600`) rather than in the client configuration:
 
 `cookidoo.env` holds the variables of the table above (`COOKIDOO_EMAIL=…`, one per line).
 To build the image yourself: `docker build -t mcp-cookidoo .`; it runs as a non-root user.
+
+### Verifying a release
+
+Images are signed keyless with [cosign](https://docs.sigstore.dev/) by the Docker workflow of
+this repository; release files carry GitHub build provenance:
+
+```bash
+cosign verify ghcr.io/herp75/mcp-cookidoo:2.0.0 \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp '^https://github.com/herp75/mcp-cookidoo/\.github/workflows/docker\.yml@'
+gh attestation verify mcp-cookidoo-2.0.0.mcpb --repo herp75/mcp-cookidoo
+```
+
+The server is also listed in the [MCP Registry](https://registry.modelcontextprotocol.io) as
+`io.github.herp75/mcp-cookidoo`.
 
 ### HTTP
 

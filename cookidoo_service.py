@@ -118,8 +118,8 @@ def load_cookidoo_settings() -> CookidooSettings:
     return CookidooSettings(
         email=email,
         password=password,
-        country=os.getenv("COOKIDOO_COUNTRY", "fr").lower(),
-        language=os.getenv("COOKIDOO_LANGUAGE", "fr-FR"),
+        country=(os.getenv("COOKIDOO_COUNTRY") or "fr").strip().lower(),
+        language=(os.getenv("COOKIDOO_LANGUAGE") or "fr-FR").strip(),
         device=cast(Device | None, device),
     )
 
@@ -155,48 +155,62 @@ class CookidooService:
 
     async def login(self) -> Cookidoo:
         """
-        Authenticate with Cookidoo and return the API client.
+        Authenticate with Cookidoo (again) and return the API client.
+
+        The new session replaces the current one only once the login succeeded; a failed
+        login leaves a working session in place.
 
         Raises:
             ValueError: If the configured country/language is not supported
             CookidooException: If authentication fails
         """
         async with self._lock:
-            await self._close_session()
+            return await self._login()
 
-            localizations = await get_localization_options(
-                country=self.settings.country, language=self.settings.language
+    async def _login(self) -> Cookidoo:
+        """Log in with a new session and swap it in. Call with the lock held."""
+        localizations = await get_localization_options(
+            country=self.settings.country, language=self.settings.language
+        )
+        if not localizations:
+            raise ValueError(
+                f"No Cookidoo site for country '{self.settings.country}' and "
+                f"language '{self.settings.language}'"
             )
-            if not localizations:
-                raise ValueError(
-                    f"No Cookidoo site for country '{self.settings.country}' and "
-                    f"language '{self.settings.language}'"
-                )
 
-            self._session = ClientSession()  # default TLS verification: keep it that way
-            try:
-                client = Cookidoo(
-                    session=self._session,
-                    cfg=CookidooConfig(
-                        email=self.settings.email,
-                        password=self.settings.password,
-                        localization=localizations[0],
-                    ),
-                    on_auth_data_update=_register_tokens,
-                )
-                await client.login()
-            except BaseException:
-                await self._close_session()
-                raise
+        session = ClientSession()  # default TLS verification: keep it that way
+        try:
+            client = Cookidoo(
+                session=session,
+                cfg=CookidooConfig(
+                    email=self.settings.email,
+                    password=self.settings.password,
+                    localization=localizations[0],
+                ),
+                on_auth_data_update=_register_tokens,
+            )
+            await client.login()
+        except BaseException:
+            await session.close()
+            raise
 
-            self._api_client = client
-            return client
+        old, self._session, self._api_client = self._session, session, client
+        if old is not None:
+            await old.close()
+        return client
 
     async def client(self) -> Cookidoo:
-        """Return the authenticated client, logging in on first use."""
-        if self._api_client is None:
-            return await self.login()
-        return self._api_client
+        """
+        Return the authenticated client, logging in on first use. Concurrent first calls
+        share one login: without the lock, each would log in and close the session the
+        others were using ("Session is closed").
+        """
+        if (client := self._api_client) is not None:
+            return client
+        async with self._lock:
+            if self._api_client is None:
+                return await self._login()
+            return self._api_client
 
     async def _close_session(self) -> None:
         self._api_client = None

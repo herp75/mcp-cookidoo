@@ -45,3 +45,5 @@ Only the latest release receives security fixes.
   pull requests, and checks every tool output and log record for the password and tokens.
 - **Supply chain:** dependencies are capped and locked (`uv.lock`), audited with
   `pip-audit`, updated through Dependabot; GitHub Actions are pinned by commit SHA.
+  Docker images are signed keyless with cosign; release files carry build provenance
+  (see the README for the verify commands). Releases run the full CI first.

@@ -24,6 +24,9 @@ COPY --from=build /app/.venv /app/.venv
 COPY pyproject.toml server.py cookidoo_service.py guided.py schemas.py security.py recipe_images.py devices.py prompt.md prompt_FR.md prompt_DE.md ./
 COPY tools/*.py ./tools/
 
+# MCP Registry: proves this image belongs to the server.json entry of the same name
+LABEL io.modelcontextprotocol.server.name="io.github.herp75/mcp-cookidoo"
+
 RUN adduser -S -D -H -u 10001 app
 USER app
 

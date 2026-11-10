@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -29,6 +30,7 @@ def service(monkeypatch):
     svc = CookidooService(CookidooSettings(email="a@b.c", password="x"))
     for name in (
         "login",
+        "_login",
         "search_recipes",
         "get_recipe_details",
         "list_custom_recipes",
@@ -49,7 +51,9 @@ async def call(tool, **args):
 
 async def test_server_reports_project_version():
     async with Client(server.mcp) as client:
-        assert client.server_info.version == server.VERSION == "1.1.0"
+        assert client.server_info.version == server.VERSION
+    pyproject = (Path(server.__file__).parent / "pyproject.toml").read_text()
+    assert f'version = "{server.VERSION}"' in pyproject
 
 
 async def test_generate_recipe_structure_round_trips_to_upload(service):

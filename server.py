@@ -137,7 +137,7 @@ async def _check_device(
     errors, warnings = check_steps(recipe.steps, resolved, catalog)
     # Render the steps as they will be sent, so that generate_recipe_structure already
     # refuses what the upload would (e.g. a setting written twice in one step)
-    language = service.settings.language if service else os.getenv("COOKIDOO_LANGUAGE", "fr-FR")
+    language = service.settings.language if service else (os.getenv("COOKIDOO_LANGUAGE") or "fr-FR")
     for number, step in enumerate(recipe.steps, 1):
         try:
             to_instruction(step, language)
@@ -475,10 +475,10 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--transport",
         choices=["stdio", "http"],
-        default=os.getenv("COOKIDOO_MCP_TRANSPORT", "stdio"),
+        default=os.getenv("COOKIDOO_MCP_TRANSPORT") or "stdio",
     )
-    parser.add_argument("--host", default=os.getenv("COOKIDOO_MCP_HOST", "127.0.0.1"))
-    parser.add_argument("--port", type=int, default=int(os.getenv("COOKIDOO_MCP_PORT", "8000")))
+    parser.add_argument("--host", default=os.getenv("COOKIDOO_MCP_HOST") or "127.0.0.1")
+    parser.add_argument("--port", type=int, default=int(os.getenv("COOKIDOO_MCP_PORT") or "8000"))
     args = parser.parse_args(argv)
 
     if args.transport == "stdio":

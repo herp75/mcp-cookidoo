@@ -317,3 +317,16 @@ async def test_search_caps_max_results(service):
     async with Client(server.mcp) as client:
         with pytest.raises(ToolError):
             await client.call_tool("search_recipes", {"query": "soup", "max_results": 500})
+
+
+def test_empty_optional_settings_use_the_defaults(monkeypatch):
+    """Claude Desktop passes optional bundle fields left blank as empty variables."""
+    monkeypatch.setattr("cookidoo_service.load_dotenv", lambda: None)
+    monkeypatch.setenv("COOKIDOO_EMAIL", "a@b.c")
+    monkeypatch.setenv("COOKIDOO_PASSWORD", "my-secret-pw")
+    for name in ("COOKIDOO_COUNTRY", "COOKIDOO_LANGUAGE", "COOKIDOO_DEVICE"):
+        monkeypatch.setenv(name, "")
+    from cookidoo_service import load_cookidoo_settings
+
+    settings = load_cookidoo_settings()
+    assert (settings.country, settings.language, settings.device) == ("fr", "fr-FR", None)

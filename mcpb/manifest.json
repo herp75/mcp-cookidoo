@@ -1,0 +1,84 @@
+{
+  "manifest_version": "0.4",
+  "name": "mcp-cookidoo",
+  "display_name": "Cookidoo (Thermomix)",
+  "version": "0.0.0",
+  "description": "Search Cookidoo recipes and manage your own: custom recipes with Thermomix settings, shopping list, meal plan, collections.",
+  "long_description": "Unofficial MCP server for the Thermomix Cookidoo platform, not affiliated with Vorwerk. It logs in with your Cookidoo e-mail and password (Cookidoo has no OAuth), so use a unique password. Recipes are checked against what your Thermomix (TM5, TM6, TM7) supports. Recipe content from Cookidoo is treated as data, not instructions; keep Claude's approval prompt on for tools that change your account.",
+  "author": {
+    "name": "mcp-cookidoo fork contributors",
+    "url": "https://github.com/herp75/mcp-cookidoo"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/herp75/mcp-cookidoo"
+  },
+  "homepage": "https://github.com/herp75/mcp-cookidoo",
+  "documentation": "https://github.com/herp75/mcp-cookidoo#readme",
+  "support": "https://github.com/herp75/mcp-cookidoo/issues",
+  "license": "MIT",
+  "keywords": ["cookidoo", "thermomix", "recipes", "meal-plan", "shopping-list"],
+  "server": {
+    "type": "uv",
+    "entry_point": "server.py",
+    "mcp_config": {
+      "command": "uv",
+      "args": ["run", "--directory", "${__dirname}", "--locked", "--no-dev", "server.py"],
+      "env": {
+        "COOKIDOO_EMAIL": "${user_config.email}",
+        "COOKIDOO_PASSWORD": "${user_config.password}",
+        "COOKIDOO_COUNTRY": "${user_config.country}",
+        "COOKIDOO_LANGUAGE": "${user_config.language}",
+        "COOKIDOO_DEVICE": "${user_config.device}",
+        "COOKIDOO_IMAGE_DIRS": "${user_config.image_dir}"
+      }
+    }
+  },
+  "user_config": {
+    "email": {
+      "type": "string",
+      "title": "Cookidoo e-mail",
+      "description": "The e-mail address you log in to Cookidoo with.",
+      "required": true
+    },
+    "password": {
+      "type": "string",
+      "title": "Cookidoo password",
+      "description": "Stored by Claude Desktop in your system's secure storage. Use a password you use nowhere else.",
+      "sensitive": true,
+      "required": true
+    },
+    "country": {
+      "type": "string",
+      "title": "Cookidoo country",
+      "description": "Country code of your Cookidoo site, e.g. ch, de, at, fr, gb.",
+      "default": "fr",
+      "required": false
+    },
+    "language": {
+      "type": "string",
+      "title": "Cookidoo language",
+      "description": "Language of your Cookidoo site, e.g. de-CH, de-DE, fr-FR, en-GB. Thermomix settings are written in it (German, French, English).",
+      "default": "fr-FR",
+      "required": false
+    },
+    "device": {
+      "type": "string",
+      "title": "Thermomix",
+      "description": "TM5, TM6 or TM7. Leave empty to detect it from the devices linked to your account.",
+      "required": false
+    },
+    "image_dir": {
+      "type": "directory",
+      "title": "Recipe photo folder",
+      "description": "Optional: the only folder recipe photos may be uploaded from. Leave empty to disable photo upload.",
+      "required": false
+    }
+  },
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {
+      "python": ">=3.12,<4"
+    }
+  }
+}

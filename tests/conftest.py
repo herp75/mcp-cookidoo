@@ -31,6 +31,7 @@ from cookidoo_api.types import (
 from fastmcp import Client
 from yarl import URL
 
+import cookidoo_service
 import server
 from cookidoo_service import CookidooService, CookidooSettings
 
@@ -311,6 +312,20 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.skip(reason="live test that writes: needs --live-write"))
         elif "live" in item.keywords and not read:
             item.add_marker(pytest.mark.skip(reason="live test: needs --live"))
+
+
+class _NoNetwork:
+    def __init__(self, *args, **kwargs):
+        raise AssertionError(
+            "a unit test tried to open a real Cookidoo session: mock the service or the client"
+        )
+
+
+@pytest.fixture(autouse=True)
+def _no_real_cookidoo(request, monkeypatch):
+    """Unit tests never reach Cookidoo: only tests marked live may open a real session."""
+    if request.node.get_closest_marker("live") is None:
+        monkeypatch.setattr(cookidoo_service, "ClientSession", _NoNetwork)
 
 
 SECRET = "fake-password-for-tests-0001"
