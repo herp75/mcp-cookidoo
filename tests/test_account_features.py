@@ -1,6 +1,6 @@
 """Account, shopping list, meal plan, collection and delete tools, through the MCP protocol."""
 
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
 from fastmcp.exceptions import ToolError
@@ -243,7 +243,7 @@ async def test_clear_shopping_list(fake):
 
 async def test_get_meal_plan_week(fake):
     text = await run("get_meal_plan_week", day="2026-11-10")
-    assert text.startswith("Meal plan for the week of 2026-11-10:")
+    assert text.startswith("Meal plan from 2026-11-10 to 2026-11-16:")
     assert "2026-11-09 (Monday):\n  - Test Tomato Soup | recipe ID: r100001" in text
     assert "My Test Pasta | custom recipe ID: 01TESTRECIPE00000000000001" in text
     assert "(custom recipe, not found) | custom recipe ID: 01TESTRECIPEMISSING00000001" in text
@@ -254,7 +254,9 @@ async def test_get_meal_plan_week(fake):
 async def test_get_meal_plan_week_defaults_to_today(fake):
     fake.days = []
     text = await run("get_meal_plan_week")
-    assert text == f"Nothing planned in the week of {date.today().isoformat()}."
+    today = date.today()
+    end = today + timedelta(days=6)
+    assert text == f"Nothing planned from {today.isoformat()} to {end.isoformat()}."
 
 
 async def test_get_meal_plan_week_validation_and_error(fake):

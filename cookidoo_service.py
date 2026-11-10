@@ -45,6 +45,7 @@ from cookidoo_api.helpers import (
 from cookidoo_api.types import CookidooCalendarDay
 from dotenv import load_dotenv
 
+import recipe_images
 from guided import to_instruction
 from schemas import CustomRecipe
 from security import register_secret
@@ -97,6 +98,18 @@ def load_cookidoo_settings() -> CookidooSettings:
         language=os.getenv("COOKIDOO_LANGUAGE", "fr-FR"),
         device=machine,
     )
+
+
+class MoveError(Exception):
+    """A meal-plan move failed after the recipe was added to the new day."""
+
+    def __init__(
+        self, error: BaseException, rolled_back: bool, rollback_error: BaseException | None = None
+    ):
+        super().__init__(str(error))
+        self.error = error
+        self.rolled_back = rolled_back
+        self.rollback_error = rollback_error
 
 
 class CookidooService:
@@ -269,6 +282,26 @@ class CookidooService:
         api = await self.client()
         await api.remove_custom_recipe(recipe_id)
 
+    async def copy_recipe_to_custom(
+        self, recipe_id: str, servings: int | None
+    ) -> CookidooCustomRecipe:
+        """Copy a catalogue recipe into a new custom recipe (default: its own serving size)."""
+        api = await self.client()
+        if servings is None:
+            servings = (await api.get_recipe_details(recipe_id)).serving_size
+        return await api.add_custom_recipe_from(recipe_id, servings)
+
+    async def upload_custom_recipe_image(
+        self, recipe_id: str, image_path: str
+    ) -> recipe_images.UploadedImage:
+        """Validate and re-encode a local image, then set it as the recipe's image."""
+        jpeg, filename = recipe_images.prepare_image(image_path)  # before any network call
+        api = await self.client()
+        assert self._session is not None  # set by login(); default TLS verification
+        return await recipe_images.upload_recipe_image(
+            api, self._session, recipe_id, jpeg, filename
+        )
+
     # --- Account ---------------------------------------------------------------------------
 
     async def get_account(self) -> tuple[CookidooUserInfo, CookidooSubscription | None]:
@@ -366,7 +399,10 @@ class CookidooService:
     # --- Meal plan -------------------------------------------------------------------------
 
     async def get_meal_plan_week(self, day: date) -> list[CookidooCalendarDay]:
-        """The planned days of the week containing `day`, with custom recipes resolved."""
+        """
+        The planned days of the 7 days starting at `day` (Cookidoo leaves empty days out),
+        with custom recipes resolved. Each day's id is its ISO date.
+        """
         api = await self.client()
         return await api.get_recipes_in_calendar_week(day, resolve_custom_recipes=True)
 
@@ -387,6 +423,46 @@ class CookidooService:
             await api.remove_recipe_from_calendar(day, recipe_id)
         for recipe_id in custom_recipe_ids:
             await api.remove_custom_recipe_from_calendar(day, recipe_id)
+
+    async def move_in_meal_plan(self, recipe_id: str, from_day: date, to_day: date) -> bool:
+        """
+        Move a planned recipe to another day. Returns whether it is a custom recipe.
+
+        Adds to the new day first, then removes from the old one, so a failure never loses
+        the recipe: if the removal fails, the addition is rolled back.
+
+        Raises:
+            LookupError: if the recipe is not planned on from_day
+            MoveError: if the move failed (and whether the rollback worked)
+        """
+        api = await self.client()
+        days = {d.id: d for d in await api.get_recipes_in_calendar_week(from_day)}
+        source = days.get(from_day.isoformat())
+        if source is None:
+            raise LookupError(recipe_id)
+        if recipe_id in source.customer_recipe_ids or any(
+            r.id == recipe_id and r.is_custom for r in source.recipes
+        ):
+            is_custom = True
+        elif any(r.id == recipe_id for r in source.recipes):
+            is_custom = False
+        else:
+            raise LookupError(recipe_id)
+
+        add = api.add_custom_recipes_to_calendar if is_custom else api.add_recipes_to_calendar
+        remove = (
+            api.remove_custom_recipe_from_calendar if is_custom else api.remove_recipe_from_calendar
+        )
+        await add(to_day, [recipe_id])
+        try:
+            await remove(from_day, recipe_id)
+        except Exception as error:
+            try:
+                await remove(to_day, recipe_id)
+            except Exception as rollback_error:
+                raise MoveError(error, rolled_back=False, rollback_error=rollback_error) from error
+            raise MoveError(error, rolled_back=True) from error
+        return is_custom
 
     # --- Collections -----------------------------------------------------------------------
 

@@ -32,6 +32,11 @@ Only the latest release receives security fixes.
   come from Cookidoo and from other users. Tools return them as data; a malicious recipe
   could still try to instruct the model (prompt injection). Keep your MCP client's
   approval prompt on for write tools.
+- **Image upload** is the only tool that reads a local file and sends it out. It is disabled
+  unless `COOKIDOO_IMAGE_DIRS` lists the folders it may read; paths are resolved (symlinks
+  included) and must stay inside them; only JPEG/PNG/WebP up to 10 MB and 50 megapixels;
+  images are re-encoded to JPEG without metadata; the upload goes only to Cookidoo's fixed
+  Cloudinary endpoint, signed by Cookidoo, without Cookidoo credentials.
 - **Input validation:** IDs are checked against `^[A-Za-z0-9_-]{1,64}$` before they are put
   into a URL; list inputs are capped.
 - **Supply chain:** dependencies are capped and locked (`uv.lock`), audited with

@@ -2,7 +2,13 @@
 
 from fastmcp import FastMCP
 
-from tools import account, meal_plan, recipe_collections, shopping_list  # noqa: F401 (registers)
+from tools import (  # noqa: F401 (importing registers the tools)
+    account,
+    custom_recipes,
+    meal_plan,
+    recipe_collections,
+    shopping_list,
+)
 from tools.common import _registry
 
 

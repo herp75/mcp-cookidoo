@@ -17,7 +17,12 @@ import server
 SNAPSHOT = Path(__file__).parent / "snapshots" / "tools.json"
 DESTRUCTIVE_PREFIXES = ("delete_", "remove_", "clear_", "unfollow_")
 # Tools that overwrite existing data without a destructive-sounding name
-OVERWRITING = {"update_custom_recipe", "edit_shopping_list_items"}
+OVERWRITING = {
+    "update_custom_recipe",
+    "edit_shopping_list_items",
+    "upload_custom_recipe_image",  # replaces the current photo
+    "move_in_meal_plan",  # removes the recipe from its original day
+}
 # Irreversible tools that must also require confirm=true
 NEEDS_CONFIRM_PREFIXES = ("delete_", "clear_")
 
