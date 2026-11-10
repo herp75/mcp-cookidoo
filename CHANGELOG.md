@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+- Weekly "Upstream changes" workflow: opens (or comments on) an issue when
+  alexandrepa/mcp-cookidoo has commits that are not in `main`, each upstream head reported once
+
 ## [2.0.0] - 2026-11-10
 
 Major release of the fork: 25 new tools, device-aware recipe validation, a security baseline

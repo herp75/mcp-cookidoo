@@ -66,6 +66,17 @@ contain real names, e-mail addresses or IDs.
 - The PR description says what changed, how it was tested, and anything a reviewer should
   look at closely (security-relevant changes in particular).
 
+## Upstream
+
+This repository is a fork of [alexandrepa/mcp-cookidoo](https://github.com/alexandrepa/mcp-cookidoo).
+The weekly "Upstream changes" workflow opens an issue when upstream has new commits. Merge them
+on a branch like any other change:
+
+```bash
+git remote add upstream https://github.com/alexandrepa/mcp-cookidoo.git   # once
+git fetch upstream && git switch -c upstream-sync main && git merge upstream/main
+```
+
 ## Releases
 
 1. On a branch: set the version in `pyproject.toml` and `server.json` (both the `version` and
