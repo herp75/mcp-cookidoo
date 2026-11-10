@@ -3,6 +3,9 @@
 ## [Unreleased]
 
 ### Added
+- Guided cooking steps in German: settings are written in the notation of the cookidoo.de
+  recipe editor (`3 Min./120°C/Linkslauf/Stufe 1`, `Teig kneten/2 Min.`, `Turbo/1 Sek./3x`)
+  when `COOKIDOO_LANGUAGE` is German
 - Shopping list tools: `get_shopping_list`, `add_recipes_to_shopping_list`,
   `remove_recipes_from_shopping_list`, `add_shopping_list_items`, `edit_shopping_list_items`,
   `mark_shopping_list_items`, `remove_shopping_list_items`, `clear_shopping_list`

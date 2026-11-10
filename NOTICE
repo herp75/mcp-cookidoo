@@ -10,7 +10,12 @@ Third-party code and attributions
 This file lists code ported from other projects, with its original copyright and license.
 Files containing such code carry a header comment pointing here.
 
-(No third-party code has been ported yet.)
+tobilektri/mcp-cookidoo (MIT)
+  https://github.com/tobilektri/mcp-cookidoo
+  Copyright (c) 2025 Alexandre Patelli
+  Copyright (c) 2026 Tobias Meindl
+  Used: the German Thermomix notation of the cookidoo.de recipe editor (labels, units and
+  number format) in guided.py.
 
 Projects used for reference only (no code copied)
 -------------------------------------------------

@@ -45,7 +45,7 @@ _WORDS = {
         "simmering_basket": "panier cuisson",
         "varoma_and_simmering_basket": "Varoma et panier cuisson",
         "turbo": "Turbo",
-        "pulses": "fois",
+        "pulses": "{n} fois",
         "rice_cooker": "Rice cooker",
         "warm_up": "Réchauffage",
         "blend": "Mixage",
@@ -63,10 +63,34 @@ _WORDS = {
         "simmering_basket": "simmering basket",
         "varoma_and_simmering_basket": "Varoma and simmering basket",
         "turbo": "Turbo",
-        "pulses": "times",
+        "pulses": "{n} times",
         "rice_cooker": "Rice cooker",
         "warm_up": "Warm up",
         "blend": "Blend",
+    },
+    # Notation of the cookidoo.de recipe editor, as recorded by tobilektri/mcp-cookidoo (MIT,
+    # see NOTICE): "3 Min./120°C/Linkslauf/Stufe 1", "Stufe 0,5", "Turbo/0.5 Sek./3x"
+    "de": {
+        "speed": "Stufe",
+        "soft": "Sanftrührstufe",
+        "reverse": "Linkslauf",
+        "dough": "Teig kneten",
+        "browning": "Anbraten",
+        "gentle": "Leicht",
+        "intense": "Intensiv",
+        "steaming": "Dampfgaren",
+        "varoma": "im Varoma",
+        "simmering_basket": "im Gareinsatz",
+        "varoma_and_simmering_basket": "in beidem",
+        "turbo": "Turbo",
+        "pulses": "{n}x",
+        "rice_cooker": "Reis kochen",
+        "warm_up": "Erwärmen",
+        "blend": "Pürieren",
+        "h": "Std.",
+        "min": "Min.",
+        "sec": "Sek.",
+        "decimal_speed": ",",
     },
 }
 _ACCESSORIES = {
@@ -81,25 +105,33 @@ def _words(language: str) -> dict[str, str]:
     return _WORDS.get(language.split("-")[0].lower(), _WORDS["en"])
 
 
-def format_time(seconds: float) -> str:
+def format_time(seconds: float, language: str = "en") -> str:
+    words = _words(language)
+    sec = words.get("sec", "sec")
     if seconds < 1:
-        return f"{seconds:g} sec"
+        return f"{seconds:g} {sec}"
     hours, rest = divmod(int(seconds), 3600)
     minutes, seconds = divmod(rest, 60)
-    parts = [(hours, "h"), (minutes, "min"), (seconds, "sec")]
+    parts = [(hours, words.get("h", "h")), (minutes, words.get("min", "min")), (seconds, sec)]
     return " ".join(f"{value} {unit}" for value, unit in parts if value)
 
 
 def render(settings: StepSettings, language: str) -> str:
     """Settings as written in the step, e.g. "3 min/120°C/vitesse 1"."""
     words = _words(language)
+    decimal = words.get("decimal_speed", ".")
 
     def speed(value: str) -> str:
-        return words["soft"] if value == "soft" else f"{words['speed']} {value}"
+        if value == "soft":
+            return words["soft"]
+        return f"{words['speed']} {value.replace('.', decimal)}"
+
+    def time(seconds: float) -> str:
+        return format_time(seconds, language)
 
     match settings:
         case ManualSettings():
-            parts = [format_time(settings.time)]
+            parts = [time(settings.time)]
             if settings.temperature == "varoma":
                 parts.append("Varoma")
             elif settings.temperature is not None:
@@ -107,23 +139,23 @@ def render(settings: StepSettings, language: str) -> str:
             parts += [words["reverse"]] if settings.reverse else []
             parts.append(speed(settings.speed))
         case DoughSettings():
-            parts = [words["dough"], format_time(settings.time)]
+            parts = [words["dough"], time(settings.time)]
         case BrowningSettings():
-            parts = [words["browning"], format_time(settings.time), f"{settings.temperature}°C"]
+            parts = [words["browning"], time(settings.time), f"{settings.temperature}°C"]
             parts.append(words[settings.power])
         case SteamingSettings():
-            parts = [words["steaming"], format_time(settings.time), words[settings.accessory]]
+            parts = [words["steaming"], time(settings.time), words[settings.accessory]]
             parts += [words["reverse"]] if settings.reverse else []
             parts.append(speed(settings.speed))
         case TurboSettings():
-            parts = [words["turbo"], format_time(settings.time)]
-            parts.append(f"{settings.pulses} {words['pulses']}")
+            parts = [words["turbo"], time(settings.time)]
+            parts.append(words["pulses"].format(n=settings.pulses))
         case RiceCookerSettings():
             parts = [words["rice_cooker"]]
         case WarmUpSettings():
             parts = [words["warm_up"], f"{settings.temperature}°C", speed(settings.speed)]
         case BlendSettings():
-            parts = [words["blend"], format_time(settings.time), speed(settings.speed)]
+            parts = [words["blend"], time(settings.time), speed(settings.speed)]
     return "/".join(parts)
 
 

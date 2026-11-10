@@ -30,7 +30,7 @@ cp .env.example .env   # then fill in your Cookidoo credentials
 | `COOKIDOO_EMAIL` | — | Cookidoo account email (required) |
 | `COOKIDOO_PASSWORD` | — | Cookidoo account password (required) |
 | `COOKIDOO_COUNTRY` | `fr` | Cookidoo site country code (`fr`, `de`, `gb`, `es`, …) |
-| `COOKIDOO_LANGUAGE` | `fr-FR` | Site language |
+| `COOKIDOO_LANGUAGE` | `fr-FR` | Site language (e.g. `de-DE`); also the language guided-cooking settings are written in |
 | `COOKIDOO_DEVICE` | `TM6` | Thermomix model set on created recipes (`TM5`, `TM6`, `TM7`) |
 | `COOKIDOO_MCP_TRANSPORT` | `stdio` | `stdio` or `http` (same as `--transport`) |
 | `COOKIDOO_MCP_HOST` | `127.0.0.1` | HTTP bind address. Any non-loopback address requires `COOKIDOO_MCP_TOKEN` |
@@ -146,7 +146,9 @@ safety layer on top of your client's approval prompt.
 
 A step is either plain text, or an object with Thermomix settings preset in guided cooking
 and/or ingredient links. The text holds one `{settings}` placeholder per setting, replaced
-by the setting written out in the account's language:
+by the setting written out in the account's language (`COOKIDOO_LANGUAGE`): French,
+English and German are supported, other languages are written in English. The settings preset
+on the Thermomix are the same in every language.
 
 ```json
 {
@@ -158,18 +160,19 @@ by the setting written out in the account's language:
 
 A setting's `mode` selects its fields. The limits are those the Cookidoo API accepts:
 
-| `mode` | Fields | Written as (fr) |
-| --- | --- | --- |
-| `manual` (default) | `time` (s, up to 99 h 59), `temperature` (optional: `"37"`…`"95"` by 5, `"98"`, `"100"`…`"120"` by 5, or `"varoma"`), `speed`, `reverse` | `3 min/120°C/vitesse 1` |
-| `dough` | `time` | `Pétrin/2 min` |
-| `browning` | `time` (up to 30 min), `temperature` (`"140"`…`"160"` by 5), `power` (`gentle`, `intense`) | `Rissolage/5 min/160°C/intense` |
-| `steaming` | `time`, `speed` (up to `"5"`), `reverse`, `accessory` (`varoma`, `simmering_basket`, `varoma_and_simmering_basket`) | `Cuisson vapeur/20 min/Varoma/vitesse 1` |
-| `turbo` | `time` (0.5, 1 or 2 s), `pulses` (1 to 10) | `Turbo/0.5 sec/3 fois` |
-| `rice_cooker` | none | `Rice cooker` |
-| `warm_up` | `temperature`, `speed` (no time: Cookidoo drops it) | `Réchauffage/65°C/vitesse 2` |
-| `blend` | `time`, `speed` | `Mixage/1 min/vitesse 10` |
+| `mode` | Fields | Written as (fr) | Written as (de) |
+| --- | --- | --- | --- |
+| `manual` (default) | `time` (s, up to 99 h 59), `temperature` (optional: `"37"`…`"95"` by 5, `"98"`, `"100"`…`"120"` by 5, or `"varoma"`), `speed`, `reverse` | `3 min/120°C/vitesse 1` | `3 Min./120°C/Stufe 1` |
+| `dough` | `time` | `Pétrin/2 min` | `Teig kneten/2 Min.` |
+| `browning` | `time` (up to 30 min), `temperature` (`"140"`…`"160"` by 5), `power` (`gentle`, `intense`) | `Rissolage/5 min/160°C/intense` | `Anbraten/5 Min./160°C/Intensiv` |
+| `steaming` | `time`, `speed` (up to `"5"`), `reverse`, `accessory` (`varoma`, `simmering_basket`, `varoma_and_simmering_basket`) | `Cuisson vapeur/20 min/Varoma/vitesse 1` | `Dampfgaren/20 Min./im Varoma/Stufe 1` |
+| `turbo` | `time` (0.5, 1 or 2 s), `pulses` (1 to 10) | `Turbo/0.5 sec/3 fois` | `Turbo/0.5 Sek./3x` |
+| `rice_cooker` | none | `Rice cooker` | `Reis kochen` |
+| `warm_up` | `temperature`, `speed` (no time: Cookidoo drops it) | `Réchauffage/65°C/vitesse 2` | `Erwärmen/65°C/Stufe 2` |
+| `blend` | `time`, `speed` | `Mixage/1 min/vitesse 10` | `Pürieren/1 Min./Stufe 10` |
 
-`speed` is `"soft"` (stirring speed) or `"0.5"` to `"10"` by halves. Cookidoo has no other
+`speed` is `"soft"` (stirring speed, `Sanftrührstufe`) or `"0.5"` to `"10"` by halves
+(written `Stufe 0,5` in German). Cookidoo has no other
 mode for custom recipes (sous-vide, slow cooking, fermentation… only exist in catalogue
 recipes). It does not check that the modes exist on the devices listed for the recipe.
 
