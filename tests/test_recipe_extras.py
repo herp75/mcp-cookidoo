@@ -18,7 +18,7 @@ from tests.conftest import SECRET, request_error, run
 CUSTOM = "01TESTRECIPE00000000000001"
 
 
-def write_image(path, fmt="JPEG", size=(64, 48), mode="RGB", **save_args):
+def write_image(path, fmt="JPEG", size=(160, 120), mode="RGB", **save_args):
     Image.new(mode, size, "red").save(path, format=fmt, **save_args)
     return path
 
@@ -140,7 +140,7 @@ def test_filename_is_sanitized(image_dir):
 
 
 def test_exif_and_gps_are_removed_and_orientation_applied(image_dir):
-    path = write_image(image_dir / "gps.jpg", size=(60, 40), exif=gps_exif())
+    path = write_image(image_dir / "gps.jpg", size=(150, 100), exif=gps_exif())
     with Image.open(path) as original:
         assert original.getexif().get_ifd(0x8825)  # the fixture really has GPS data
     jpeg, _ = prepare_image(str(path))
@@ -148,14 +148,14 @@ def test_exif_and_gps_are_removed_and_orientation_applied(image_dir):
         assert result.format == "JPEG"
         assert not result.getexif()
         assert "exif" not in result.info and "icc_profile" not in result.info
-        assert result.size == (40, 60)  # rotated by the orientation tag, then dropped
+        assert result.size == (100, 150)  # rotated by the orientation tag, then dropped
     assert b"TestCam" not in jpeg and b"Exif" not in jpeg
 
 
 @pytest.mark.parametrize("fmt", ["PNG", "WEBP"])
 def test_transparent_images_are_flattened_to_jpeg(fmt):
     buffer = BytesIO()
-    Image.new("RGBA", (10, 10), (0, 0, 0, 0)).save(buffer, format=fmt)
+    Image.new("RGBA", (100, 100), (0, 0, 0, 0)).save(buffer, format=fmt)
     jpeg = reencode_jpeg(buffer.getvalue(), fmt)
     with Image.open(BytesIO(jpeg)) as result:
         assert result.mode == "RGB" and result.getpixel((5, 5)) == (255, 255, 255)
@@ -164,9 +164,17 @@ def test_transparent_images_are_flattened_to_jpeg(fmt):
 def test_large_images_are_downscaled(monkeypatch):
     monkeypatch.setattr(recipe_images, "MAX_SIDE", 100)
     buffer = BytesIO()
-    Image.new("RGB", (400, 200)).save(buffer, format="PNG")
+    Image.new("RGB", (400, 320)).save(buffer, format="PNG")
     with Image.open(BytesIO(reencode_jpeg(buffer.getvalue(), "PNG"))) as result:
-        assert result.size == (100, 50)
+        assert result.size == (100, 80)
+
+
+@pytest.mark.parametrize("size", [(79, 200), (200, 79), (8000, 100)])
+def test_too_small_images_are_rejected(size):
+    buffer = BytesIO()
+    Image.new("RGB", size).save(buffer, format="PNG")
+    with pytest.raises(ImageRejected, match="at least 80 pixels"):
+        reencode_jpeg(buffer.getvalue(), "PNG")
 
 
 # --- Upload flow -----------------------------------------------------------------------------
@@ -267,7 +275,14 @@ async def test_invalid_signature_stops_before_upload(fake, upload, signature):
 @pytest.mark.parametrize(
     ("status", "payload", "message"),
     [
-        (400, {"error": {"message": "Invalid Signature"}}, "rejected the upload \\(400\\)"),
+        (400, {"error": {"message": "Invalid Signature"}}, r"rejected the upload \(400\)"),
+        (
+            400,
+            {"error": {"message": "Invalid Signature abc. String to sign - 'timestamp=1'."}},
+            r"\(400\): Invalid Signature abc\.$",
+        ),
+        (400, {"error": {"message": "<script>x</script>\nmore"}}, r"\(400\): scriptx/script more$"),
+        (500, "not json", r"rejected the upload \(500\)\.$"),
         (200, {"public_id": "x", "format": "png"}, "no usable image key"),
         (200, {"public_id": "../../evil", "format": "jpg"}, "no usable image key"),
         (200, {"format": "jpg"}, "no usable image key"),

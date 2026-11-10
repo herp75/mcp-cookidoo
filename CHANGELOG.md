@@ -3,6 +3,14 @@
 ## [Unreleased]
 
 ### Added
+- Live tests (`tests/live`) against the real Cookidoo API with a dedicated test account:
+  read-only with `--live`, plus create/update/delete round trips with `--live-write` (TM6 and
+  TM7 recipes, copy, image upload, collections, shopping list, meal plan), each removing what
+  it created. Credentials only from `COOKIDOO_TEST_*` / `.env.live`; every tool output and log
+  record of the run is checked for the password and tokens
+- Weekly "Live tests" workflow (and on demand), with the secrets in a `live` environment; it
+  compares the Cookidoo recipe editor (page and script) with the limits in `devices.py` and
+  opens an issue when they differ
 - Thermomix device awareness: `generate_recipe_structure`, `upload_custom_recipe` and
   `update_custom_recipe` take an optional `device` (`TM5`, `TM6`, `TM7`) and refuse settings
   the device does not support, with the limits of the Cookidoo recipe editor (browning and
@@ -60,6 +68,12 @@
   All actions pinned by commit SHA with least-privilege permissions
 
 ### Fixed
+- The mode catalog read only the first chunk of the editor page, so it fell back to the
+  built-in list on real connections (found by the live tests)
+- `generate_recipe_structure` accepted steps the upload then refused (a setting written twice
+  in one step, e.g. "Reis kochen {settings}"); it now renders the steps as the upload does
+- Images under 80 pixels on a side are refused before upload (Cloudinary's moderation rejects
+  them), and Cloudinary's reason is shown, cleaned up, when it rejects an upload
 - Turbo sends `pulseCount` only for more than one pulse (a TM7 setting), as the Cookidoo
   editor does, and the step text no longer says "1x"
 - `get_meal_plan_week` described and labelled the result as the calendar week containing
@@ -76,6 +90,7 @@
   files copied
 
 ### Security
+- Cookidoo's OAuth access and refresh tokens are masked in errors and logs, like the password
 - fastmcp upgraded to 4.1.2 (GHSA-7xgj-8392-5q4r, GHSA-vqqp-x5qm-5qp4)
 
 ## [1.1.0] - 2026-10-20

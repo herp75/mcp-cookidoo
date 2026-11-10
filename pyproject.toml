@@ -37,6 +37,10 @@ select = ["E", "F", "I", "UP", "B", "ASYNC"]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = [
+    "live: talks to the real Cookidoo API with the test account (needs --live)",
+    "live_write: live test that creates and removes data (needs --live-write)",
+]
 
 [tool.pyright]
 typeCheckingMode = "basic"
