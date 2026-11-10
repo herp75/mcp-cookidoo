@@ -1,0 +1,280 @@
+{
+  "tools": {
+    "add_recipes_to_shopping_list": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": [
+        "custom_recipe_ids",
+        "recipe_ids"
+      ]
+    },
+    "add_shopping_list_items": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": [
+        "items"
+      ]
+    },
+    "add_to_collection": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": [
+        "collection_id",
+        "recipe_ids"
+      ]
+    },
+    "add_to_meal_plan": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": [
+        "custom_recipe_ids",
+        "day",
+        "recipe_ids"
+      ]
+    },
+    "clear_shopping_list": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": [
+        "confirm"
+      ]
+    },
+    "connect_to_cookidoo": {
+      "readOnlyHint": true,
+      "destructiveHint": null,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": []
+    },
+    "create_collection": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": [
+        "name"
+      ]
+    },
+    "delete_collection": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": [
+        "collection_id",
+        "confirm"
+      ]
+    },
+    "delete_custom_recipe": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": [
+        "confirm",
+        "recipe_id"
+      ]
+    },
+    "edit_shopping_list_items": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": true,
+      "params": [
+        "items"
+      ]
+    },
+    "follow_collection": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": [
+        "collection_id"
+      ]
+    },
+    "generate_recipe_structure": {
+      "readOnlyHint": true,
+      "destructiveHint": null,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": [
+        "hints",
+        "ingredients",
+        "name",
+        "prep_time",
+        "servings",
+        "steps",
+        "total_time"
+      ]
+    },
+    "get_account_info": {
+      "readOnlyHint": true,
+      "destructiveHint": null,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": []
+    },
+    "get_custom_recipe": {
+      "readOnlyHint": true,
+      "destructiveHint": null,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": [
+        "recipe_id"
+      ]
+    },
+    "get_meal_plan_week": {
+      "readOnlyHint": true,
+      "destructiveHint": null,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": [
+        "day"
+      ]
+    },
+    "get_recipe_details": {
+      "readOnlyHint": true,
+      "destructiveHint": null,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": [
+        "recipe_id"
+      ]
+    },
+    "get_shopping_list": {
+      "readOnlyHint": true,
+      "destructiveHint": null,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": []
+    },
+    "list_collections": {
+      "readOnlyHint": true,
+      "destructiveHint": null,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": [
+        "kind",
+        "page"
+      ]
+    },
+    "list_custom_recipes": {
+      "readOnlyHint": true,
+      "destructiveHint": null,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": []
+    },
+    "list_devices": {
+      "readOnlyHint": true,
+      "destructiveHint": null,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": []
+    },
+    "mark_shopping_list_items": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": true,
+      "params": [
+        "item_ids",
+        "owned"
+      ]
+    },
+    "remove_from_collection": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": true,
+      "params": [
+        "collection_id",
+        "recipe_ids"
+      ]
+    },
+    "remove_from_meal_plan": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": [
+        "custom_recipe_ids",
+        "day",
+        "recipe_ids"
+      ]
+    },
+    "remove_recipes_from_shopping_list": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": [
+        "custom_recipe_ids",
+        "recipe_ids"
+      ]
+    },
+    "remove_shopping_list_items": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": [
+        "item_ids"
+      ]
+    },
+    "search_recipes": {
+      "readOnlyHint": true,
+      "destructiveHint": null,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": [
+        "ingredients",
+        "max_results",
+        "max_total_time",
+        "query"
+      ]
+    },
+    "unfollow_collection": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": true,
+      "params": [
+        "collection_id"
+      ]
+    },
+    "update_custom_recipe": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": true,
+      "params": [
+        "recipe_id",
+        "recipe_json"
+      ]
+    },
+    "upload_custom_recipe": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": null,
+      "openWorldHint": true,
+      "params": [
+        "recipe_json"
+      ]
+    }
+  },
+  "prompts": [
+    "create_thermomix_recipe"
+  ]
+}

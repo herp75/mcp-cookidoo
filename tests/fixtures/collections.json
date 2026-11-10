@@ -1,0 +1,13 @@
+{
+  "managed": [
+    {"id": "col500001", "name": "Test Weeknight Dinners", "description": "Quick meals",
+     "chapters": [{"name": "Mains", "recipes": [
+       {"id": "r100001", "name": "Test Tomato Soup", "total_time": 1800},
+       {"id": "r100002", "name": "Test Risotto", "total_time": 2400}]}]}
+  ],
+  "custom": [
+    {"id": "01TESTCOLLECTION0000000001", "name": "My Favourites", "description": null,
+     "chapters": [{"name": "", "recipes": [
+       {"id": "r100002", "name": "Test Risotto", "total_time": 2400}]}]}
+  ]
+}

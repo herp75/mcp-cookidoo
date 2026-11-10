@@ -40,7 +40,7 @@ pythonpath = ["."]
 [tool.pyright]
 typeCheckingMode = "basic"
 pythonVersion = "3.12"
-include = ["*.py", "tests"]
+include = ["*.py", "tools", "tests"]
 venvPath = "."
 venv = ".venv"
 # Tests use mocks and loosely typed MCP results; keep the strictness for the server code.

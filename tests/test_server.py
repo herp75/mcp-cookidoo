@@ -47,23 +47,6 @@ async def call(tool, **args):
         return result.content[0].text
 
 
-async def test_all_tools_registered():
-    async with Client(server.mcp) as client:
-        names = {t.name for t in await client.list_tools()}
-        prompts = {p.name for p in await client.list_prompts()}
-    assert names == {
-        "connect_to_cookidoo",
-        "search_recipes",
-        "get_recipe_details",
-        "list_custom_recipes",
-        "get_custom_recipe",
-        "generate_recipe_structure",
-        "upload_custom_recipe",
-        "update_custom_recipe",
-    }
-    assert prompts == {"create_thermomix_recipe"}
-
-
 async def test_server_reports_project_version():
     async with Client(server.mcp) as client:
         assert client.server_info.version == server.VERSION == "1.1.0"
@@ -275,6 +258,26 @@ async def test_service_sends_settings_in_account_language(monkeypatch):
     assert expected[1].text == "Faire revenir l'oignon 3 min/120°C/vitesse 1."
     assert api.create_custom_recipe.await_args.args[0].instructions == expected
     assert api.update_custom_recipe.await_args.args[1].instructions == expected
+
+
+@pytest.mark.parametrize(
+    ("language", "marker"),
+    [
+        ("en", "Interaction Process"),
+        ("fr-FR", "Consignes de Rédaction"),
+        ("de", "Schreibrichtlinien"),
+        ("de-AT", "Schreibrichtlinien"),
+        ("it", "Interaction Process"),
+    ],
+)
+async def test_prompt_language(language, marker):
+    async with Client(server.mcp) as client:
+        result = await client.get_prompt(
+            "create_thermomix_recipe", {"dish": "Linsensuppe", "language": language}
+        )
+    text = result.messages[0].content.text
+    assert marker in text
+    assert '"Linsensuppe"' in text and "[" not in text.splitlines()[2]
 
 
 async def test_prompt_inserts_dish():

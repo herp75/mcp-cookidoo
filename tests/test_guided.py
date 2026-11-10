@@ -283,3 +283,60 @@ def test_step_checks():
             ingredients=["a"],
             steps=[step("Ajouter le sel.", ingredients=[{"text": "le sel", "ingredient": "sel"}])],
         )
+
+
+def test_format_time_german():
+    assert format_time(5, "de-DE") == "5 Sek."
+    assert format_time(90, "de-DE") == "1 Min. 30 Sek."
+    assert format_time(5400, "de-AT") == "1 Std. 30 Min."
+    assert format_time(0.5, "de") == "0.5 Sek."
+
+
+@pytest.mark.parametrize(
+    ("settings", "german"),
+    [
+        ({"time": 180, "temperature": "120", "speed": "1"}, "3 Min./120°C/Stufe 1"),
+        (
+            {"time": 900, "temperature": "100", "speed": "1", "reverse": True},
+            "15 Min./100°C/Linkslauf/Stufe 1",
+        ),
+        (
+            {"time": 720, "temperature": "100", "speed": "soft", "reverse": True},
+            "12 Min./100°C/Linkslauf/Sanftrührstufe",
+        ),
+        ({"time": 1200, "temperature": "varoma", "speed": "1"}, "20 Min./Varoma/Stufe 1"),
+        ({"time": 10, "speed": "0.5"}, "10 Sek./Stufe 0,5"),
+        ({"time": 90, "temperature": "90", "speed": "2.5"}, "1 Min. 30 Sek./90°C/Stufe 2,5"),
+        ({"mode": "dough", "time": 120}, "Teig kneten/2 Min."),
+        (
+            {"mode": "browning", "time": 600, "temperature": "160", "power": "gentle"},
+            "Anbraten/10 Min./160°C/Leicht",
+        ),
+        (
+            {"mode": "steaming", "time": 1200, "speed": "1", "accessory": "simmering_basket"},
+            "Dampfgaren/20 Min./im Gareinsatz/Stufe 1",
+        ),
+        ({"mode": "turbo", "time": 1, "pulses": 3}, "Turbo/1 Sek./3x"),
+        ({"mode": "turbo", "time": 0.5}, "Turbo/0.5 Sek./1x"),
+        ({"mode": "rice_cooker"}, "Reis kochen"),
+        ({"mode": "warm_up", "temperature": "65", "speed": "1"}, "Erwärmen/65°C/Stufe 1"),
+        ({"mode": "blend", "time": 60, "speed": "8"}, "Pürieren/1 Min./Stufe 8"),
+    ],
+)
+def test_render_german(settings, german):
+    assert render(step("{settings}", settings).settings[0], "de-DE") == german
+
+
+def test_german_round_trip_keeps_settings_and_links():
+    original = step(
+        "Die Zwiebel zerkleinern {settings}, dann dünsten {settings}.",
+        {"time": 5, "speed": "5"},
+        {"time": 180, "temperature": "120", "speed": "1", "reverse": True},
+        ingredients=[{"text": "Zwiebel", "ingredient": "1 Zwiebel, halbiert"}],
+    )
+    instruction = to_instruction(original, "de-DE")
+    assert instruction.text == (
+        "Die Zwiebel zerkleinern 5 Sek./Stufe 5, dann dünsten 3 Min./120°C/Linkslauf/Stufe 1."
+    )
+    sent = Cookidoo._process_recipe_steps([instruction], ["1 Zwiebel, halbiert"])[0]
+    assert from_raw(sent) == original

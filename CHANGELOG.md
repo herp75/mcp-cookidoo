@@ -3,6 +3,24 @@
 ## [Unreleased]
 
 ### Added
+- Guided cooking steps in German: settings are written in the notation of the cookidoo.de
+  recipe editor (`3 Min./120°C/Linkslauf/Stufe 1`, `Teig kneten/2 Min.`, `Turbo/1 Sek./3x`)
+  when `COOKIDOO_LANGUAGE` is German, and a German `create_thermomix_recipe` prompt
+  (`language="de"`)
+- Shopping list tools: `get_shopping_list`, `add_recipes_to_shopping_list`,
+  `remove_recipes_from_shopping_list`, `add_shopping_list_items`, `edit_shopping_list_items`,
+  `mark_shopping_list_items`, `remove_shopping_list_items`, `clear_shopping_list`
+- Meal plan tools: `get_meal_plan_week`, `add_to_meal_plan`, `remove_from_meal_plan`
+- Collection tools: `list_collections` (paginated), `follow_collection`, `unfollow_collection`,
+  `create_collection`, `delete_collection`, `add_to_collection`, `remove_from_collection`
+- Account tools: `get_account_info`, `list_devices`; and `delete_custom_recipe`
+- Tools that accept recipes take official (`recipe_ids`) and custom (`custom_recipe_ids`) IDs
+- `clear_shopping_list`, `delete_collection` and `delete_custom_recipe` refuse to run without
+  `confirm=true`; destructive tools say in their description what is lost
+- Names coming from Cookidoo are collapsed onto one line in tool output, so they cannot fake
+  extra fields
+- Tool-contract snapshot test (`tests/snapshots/tools.json`): names, annotations and parameters
+  of every tool; destructive/read-only hints and `confirm` checked by naming rules
 - HTTP mode via `server.py --transport http`: binds to `127.0.0.1` by default; a non-loopback
   `COOKIDOO_MCP_HOST` requires `COOKIDOO_MCP_TOKEN` (32+ characters), checked as a bearer
   token in constant time on every request; unauthenticated `GET /health`
@@ -17,6 +35,7 @@
   All actions pinned by commit SHA with least-privilege permissions
 
 ### Changed
+- New tools live in a `tools/` package, one module per group
 - Docker image: Alpine-based multi-stage build (uv only in the build stage), runs as a
   non-root user, base images pinned by digest and security updates applied, only server
   files copied
