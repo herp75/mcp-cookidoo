@@ -2,7 +2,11 @@
 
 An MCP (Model Context Protocol) server for interacting with the Thermomix Cookidoo platform, built with [FastMCP](https://gofastmcp.com).
 
-> **Disclaimer:** This is an unofficial project. The developers are not affiliated with, endorsed by, or connected to Cookidoo, Vorwerk, Thermomix, or any of their subsidiaries or trademarks.
+> **Disclaimer:** This is an unofficial project. The developers are not affiliated with,
+> endorsed by, or connected to Cookidoo, Vorwerk, Thermomix, or any of their subsidiaries or
+> trademarks. It uses Cookidoo's private web API with your own account: that may conflict with
+> Cookidoo's terms of use, and it can break whenever Cookidoo changes its site (a weekly live
+> test watches for that). Use it at your own risk.
 
 ## Features
 
@@ -37,6 +41,8 @@ cp .env.example .env   # then fill in your Cookidoo credentials
 | `COOKIDOO_MCP_HOST` | `127.0.0.1` | HTTP bind address. Any non-loopback address requires `COOKIDOO_MCP_TOKEN` |
 | `COOKIDOO_MCP_PORT` | `8000` | HTTP port |
 | `COOKIDOO_MCP_TOKEN` | — | Bearer token for HTTP mode, at least 32 characters (e.g. `openssl rand -hex 32`) |
+| `COOKIDOO_TEST_EMAIL`, `COOKIDOO_TEST_PASSWORD` | — | Live tests only: a dedicated test account (see [Live tests](#live-tests)) |
+| `COOKIDOO_TEST_COUNTRY`, `COOKIDOO_TEST_LANGUAGE` | `ch`, `de-CH` | Live tests only: the test account's site |
 
 ## Usage
 
@@ -63,24 +69,24 @@ Add to `claude_desktop_config.json`:
 
 ### Docker
 
-A prebuilt image (amd64 / arm64) is published for each release, no Python needed:
+Images for amd64 and arm64 are published to GitHub Container Registry: `edge` is built from
+every change on `main`, version tags (`1`, `1.2`, `1.2.0`) from releases. Keep the credentials
+in an env file (`chmod 600`) rather than in the client configuration:
 
 ```json
 {
   "mcpServers": {
     "cookidoo": {
       "command": "docker",
-      "args": ["run", "--rm", "-i", "-e", "COOKIDOO_EMAIL", "-e", "COOKIDOO_PASSWORD", "ghcr.io/alexandrepa/mcp-cookidoo:1"],
-      "env": {
-        "COOKIDOO_EMAIL": "your-email@example.com",
-        "COOKIDOO_PASSWORD": "your-password"
-      }
+      "args": ["run", "--rm", "-i", "--env-file", "/path/to/cookidoo.env",
+               "ghcr.io/herp75/mcp-cookidoo:edge"]
     }
   }
 }
 ```
 
-To build it yourself instead: `docker build -t cookidoo-mcp .`
+`cookidoo.env` holds the variables of the table above (`COOKIDOO_EMAIL=…`, one per line).
+To build the image yourself: `docker build -t mcp-cookidoo .`; it runs as a non-root user.
 
 ### HTTP
 
@@ -92,7 +98,15 @@ COOKIDOO_MCP_TOKEN=$(openssl rand -hex 32) COOKIDOO_MCP_HOST=0.0.0.0 uv run serv
 ```
 
 Clients then send `Authorization: Bearer <token>`. `GET /health` returns `{"status":"ok"}`.
-With Docker, publish the port on loopback only: `docker run -p 127.0.0.1:8000:8000 …`.
+With Docker, the server must bind to all interfaces inside the container, so a token is
+required; publish the port on loopback only:
+
+```bash
+docker run --rm --env-file cookidoo.env -e COOKIDOO_MCP_HOST=0.0.0.0 \
+  -e COOKIDOO_MCP_TOKEN="$(openssl rand -hex 32)" -p 127.0.0.1:8000:8000 \
+  ghcr.io/herp75/mcp-cookidoo:edge --transport http
+```
+
 Use `server.py` rather than `fastmcp run … --transport http`, which skips these checks.
 
 ### Development
@@ -218,6 +232,9 @@ See [SECURITY.md](SECURITY.md) for the threat model and how to report a vulnerab
 
 ## Development
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and
+[docs/architecture.md](docs/architecture.md) for how the code is organised.
+
 ```bash
 uv sync
 uv run pytest --cov                    # tests, coverage must stay at 85 % or more
@@ -246,9 +263,21 @@ The "Live tests" workflow runs them weekly with the secrets `COOKIDOO_TEST_EMAIL
 variables `COOKIDOO_TEST_COUNTRY`, `COOKIDOO_TEST_LANGUAGE`, default `ch` / `de-CH`). It also
 compares the Cookidoo recipe editor with `devices.py` and opens an issue if they differ.
 
-## Acknowledgments
+## Credits
 
-This project is built on top of [cookidoo-api](https://github.com/miaucl/cookidoo-api), which provides the Python interface to the Cookidoo platform. Thanks also to everyone who opened pull requests on this repository — their ideas (search, recipe editing, Docker/STDIO support) shaped this version.
+- [alexandrepa/mcp-cookidoo](https://github.com/alexandrepa/mcp-cookidoo) by Alexandre
+  Patelli: the original server this fork extends.
+- [tobilektri/mcp-cookidoo](https://github.com/tobilektri/mcp-cookidoo) (MIT): German
+  Thermomix notation, mode limits per device, the editor-page parser and fixtures.
+- [vitaliemiron/cookidoo-mcp](https://github.com/vitaliemiron/cookidoo-mcp) (Apache-2.0):
+  recipe image upload and the meal-plan move; see [NOTICE](NOTICE).
+- [danielkliem/mcp-cookidoo](https://github.com/danielkliem/mcp-cookidoo) and
+  [sisques-labs/cookidoo-mcp](https://github.com/sisques-labs/cookidoo-mcp): feature
+  inspiration only, no code copied.
+- [cookidoo-api](https://github.com/miaucl/cookidoo-api) by miaucl: the Python client for the
+  Cookidoo platform everything here is built on.
+- Everyone who opened pull requests on the original repository: their ideas (search, recipe
+  editing, Docker/STDIO support) shaped it.
 
 ## License
 

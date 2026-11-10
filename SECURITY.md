@@ -39,5 +39,9 @@ Only the latest release receives security fixes.
   Cloudinary endpoint, signed by Cookidoo, without Cookidoo credentials.
 - **Input validation:** IDs are checked against `^[A-Za-z0-9_-]{1,64}$` before they are put
   into a URL; list inputs are capped.
+- **Live tests** run against a dedicated test account only: they read `COOKIDOO_TEST_*`, never
+  `COOKIDOO_EMAIL`, and refuse to run with the same account. In CI the credentials are
+  secrets of the `live` environment, which only `main` may use; the workflow never runs for
+  pull requests, and checks every tool output and log record for the password and tokens.
 - **Supply chain:** dependencies are capped and locked (`uv.lock`), audited with
   `pip-audit`, updated through Dependabot; GitHub Actions are pinned by commit SHA.

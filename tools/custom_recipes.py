@@ -17,7 +17,8 @@ async def copy_recipe_to_custom(
     """
     Copy a Cookidoo catalogue recipe into a new custom recipe on the user's account, to adapt
     it. Returns the new custom recipe ID: read it with get_custom_recipe, edit it, and save it
-    with update_custom_recipe. The catalogue recipe is not changed.
+    with update_custom_recipe. The catalogue recipe is not changed. Each call creates another
+    copy.
 
     Args:
         recipe_id: Cookidoo catalogue recipe ID (e.g. "r59322")
