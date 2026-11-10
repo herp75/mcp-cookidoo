@@ -3,6 +3,20 @@
 ## [Unreleased]
 
 ### Added
+- Thermomix device awareness: `generate_recipe_structure`, `upload_custom_recipe` and
+  `update_custom_recipe` take an optional `device` (`TM5`, `TM6`, `TM7`) and refuse settings
+  the device does not support, with the limits of the Cookidoo recipe editor (browning and
+  steaming TM7 only, Varoma temperature TM6 only, turbo pulses TM7 only, blend 10 s – 5 min at
+  speed 6–8, warm up 37–90 °C at soft/1/2, dough ≤ 20 min, manual ≤ 99 min and ≤ speed 6 with
+  heat; TM5 manual settings only). Errors name the allowed values; off-grid times warn
+- Default device: the recipe's own devices (update), `COOKIDOO_DEVICE`, the linked devices
+  (TM6 rules if a TM6 is among them), then TM6
+- Live mode catalog read from the account's Cookidoo recipe editor page (cached 1 h, built-in
+  snapshot as fallback, untrusted input: only known names and values, it can only restrict)
+- `get_thermomix_modes(device)`: settings and modes per device with limits and examples
+- Prompts (en/fr/de) ask for the target Thermomix and pass it on
+- Mode rules, editor parser and editor fixtures from tobilektri/mcp-cookidoo (MIT, see NOTICE);
+  analysis in `docs/device-modes-analysis.md`
 - `copy_recipe_to_custom`: copy a catalogue recipe into a new custom recipe (keeping its
   serving size unless another is given) and return the new ID for editing
 - `move_in_meal_plan`: move a planned recipe to another day; it is added to the new day
@@ -46,10 +60,16 @@
   All actions pinned by commit SHA with least-privilege permissions
 
 ### Fixed
+- Turbo sends `pulseCount` only for more than one pulse (a TM7 setting), as the Cookidoo
+  editor does, and the step text no longer says "1x"
 - `get_meal_plan_week` described and labelled the result as the calendar week containing
   `day`; Cookidoo returns the 7 days starting at `day`, which is now what it says
 
 ### Changed
+- `COOKIDOO_DEVICE` no longer defaults to TM6 (unset: detected from the account) and no longer
+  accepts TM31
+- `generate_recipe_structure` returns the recipe JSON as the first content block, unchanged,
+  and the device check notes as a second block
 - New tools live in a `tools/` package, one module per group
 - Docker image: Alpine-based multi-stage build (uv only in the build stage), runs as a
   non-root user, base images pinned by digest and security updates applied, only server

@@ -16,11 +16,14 @@ from typing import Annotated
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
+from fastmcp.tools import ToolResult
+from mcp.types import TextContent
 from pydantic import Field, ValidationError
 from starlette.middleware import Middleware
 
 import tools
 from cookidoo_service import CookidooService, load_cookidoo_settings
+from devices import BUILTIN_CATALOG, DEFAULT_DEVICE, Device, check_steps
 from guided import from_raw
 from schemas import CustomRecipe, Step
 from security import (
@@ -105,10 +108,43 @@ def _split_list(text: str) -> list[str]:
 
 
 def _parse_recipe_json(recipe_json: str) -> CustomRecipe:
+    # Tolerate text a client may have kept before the JSON (e.g. "URL: ..." of get_custom_recipe)
+    start = recipe_json.find("{")
     try:
-        return CustomRecipe.model_validate_json(recipe_json)
+        return CustomRecipe.model_validate_json(recipe_json[start:] if start > 0 else recipe_json)
     except ValidationError as e:
         raise ToolError(redact(f"Invalid recipe data: {e}")) from e
+
+
+async def _check_device(
+    recipe: CustomRecipe, device: Device | None, recipe_id: str | None = None
+) -> tuple[Device, list[str]]:
+    """
+    Check the recipe's settings against the device's limits. Raises ToolError listing every
+    problem; returns the device and notes (device source, mode list source, warnings).
+    """
+    try:
+        service = _get_service()
+    except ToolError:
+        service = None  # not configured: offline check with the built-in rules
+    if service is None:
+        resolved: Device = device or DEFAULT_DEVICE
+        source = "given" if device else "default (Cookidoo not configured)"
+        catalog = BUILTIN_CATALOG
+    else:
+        resolved, source = await service.resolve_device(device, recipe_id)
+        catalog = await service.get_mode_catalog(recipe_id)
+    errors, warnings = check_steps(recipe.steps, resolved, catalog)
+    if errors:
+        raise ToolError(
+            f"Not valid for the {resolved} (device: {source}):\n"
+            + "\n".join(f"- {e}" for e in errors)
+            + '\nFix these settings, or pass device="TM6"/"TM7" if the recipe is for another '
+            "Thermomix. get_thermomix_modes lists what each device supports."
+        )
+    notes = [f"Checked for the {resolved} (device: {source}; modes: {catalog.note})."]
+    notes += [f"Warning: {w}" for w in warnings]
+    return resolved, notes
 
 
 def _minutes(seconds: int | None) -> str:
@@ -270,12 +306,14 @@ async def generate_recipe_structure(
     prep_time: int = 30,
     total_time: int = 60,
     hints: list[str] | str = "",
-) -> str:
+    device: Device | None = None,
+) -> ToolResult:
     """
     Generate and validate a recipe structure ready for upload to Cookidoo.
 
     Returns a JSON structure to show to the user and then pass to
-    upload_custom_recipe or update_custom_recipe.
+    upload_custom_recipe or update_custom_recipe. Thermomix settings are checked against
+    what the target device supports (see get_thermomix_modes).
 
     Args:
         name: Recipe name (required)
@@ -294,6 +332,9 @@ async def generate_recipe_structure(
         prep_time: Active preparation time in minutes (default: 30)
         total_time: Total time in minutes, at least prep_time (default: 60)
         hints: Optional cooking tips, as a list (or one per line)
+        device: Target Thermomix, "TM5", "TM6" or "TM7". Default: the COOKIDOO_DEVICE
+            setting, else the devices linked to the account (TM6 rules if a TM6 is
+            among them), else TM6
     """
     try:
         recipe = CustomRecipe(
@@ -307,46 +348,68 @@ async def generate_recipe_structure(
         )
     except ValidationError as e:
         raise ToolError(redact(f"Validation failed: {e}")) from e
-    return recipe.model_dump_json(indent=2)
+    _, notes = await _check_device(recipe, device)
+    # The JSON stays the first block, unchanged, so it can be passed on as is
+    return ToolResult(
+        content=[
+            TextContent(type="text", text=recipe.model_dump_json(indent=2)),
+            TextContent(type="text", text="\n".join(notes)),
+        ]
+    )
 
 
 @mcp.tool(annotations=WRITE)
-async def upload_custom_recipe(recipe_json: str) -> str:
+async def upload_custom_recipe(recipe_json: str, device: Device | None = None) -> str:
     """
-    Create a brand new custom recipe on the user's Cookidoo account.
+    Create a brand new custom recipe on the user's Cookidoo account, for one Thermomix.
 
     Only call this after the user explicitly approved the recipe.
 
     Args:
         recipe_json: The validated recipe JSON from generate_recipe_structure
+        device: Target Thermomix, "TM5", "TM6" or "TM7" (same default as
+            generate_recipe_structure). The recipe is created for this device.
     """
     recipe = _parse_recipe_json(recipe_json)
+    resolved, notes = await _check_device(recipe, device)
     try:
-        created = await _get_service().create_custom_recipe(recipe)
+        created = await _get_service().create_custom_recipe(recipe, resolved)
     except Exception as e:
         raise tool_error("Upload failed", e) from e
-    return f"Recipe '{created.name}' created.\nRecipe ID: {created.id}\nURL: {created.url}"
+    return (
+        f"Recipe '{created.name}' created for the {resolved}.\nRecipe ID: {created.id}\n"
+        f"URL: {created.url}\n" + "\n".join(notes)
+    )
 
 
 @mcp.tool(annotations={**DESTRUCTIVE, "idempotentHint": True})
-async def update_custom_recipe(recipe_id: str, recipe_json: str) -> str:
+async def update_custom_recipe(
+    recipe_id: str, recipe_json: str, device: Device | None = None
+) -> str:
     """
     Replace the content of an existing custom recipe on Cookidoo.
 
     Get the current version with get_custom_recipe, edit it, show the result to the
-    user and only call this after their explicit approval.
+    user and only call this after their explicit approval. The recipe's devices are not
+    changed.
 
     Args:
         recipe_id: The custom recipe ID returned by list_custom_recipes
         recipe_json: The full, validated recipe JSON (same format as upload_custom_recipe)
+        device: Thermomix to check the settings for. Default: the recipe's own devices
+            (TM6 rules if a TM6 is among them), then as for generate_recipe_structure
     """
     recipe_id = validate_id(recipe_id)
     recipe = _parse_recipe_json(recipe_json)
+    _, notes = await _check_device(recipe, device, recipe_id)
     try:
         updated = await _get_service().update_custom_recipe(recipe_id, recipe)
     except Exception as e:
         raise tool_error("Update failed", e) from e
-    return f"Recipe '{updated.name}' updated.\nRecipe ID: {updated.id}\nURL: {updated.url}"
+    return (
+        f"Recipe '{updated.name}' updated.\nRecipe ID: {updated.id}\nURL: {updated.url}\n"
+        + "\n".join(notes)
+    )
 
 
 @mcp.tool(annotations=DESTRUCTIVE)

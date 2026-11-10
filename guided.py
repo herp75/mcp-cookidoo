@@ -149,7 +149,8 @@ def render(settings: StepSettings, language: str) -> str:
             parts.append(speed(settings.speed))
         case TurboSettings():
             parts = [words["turbo"], time(settings.time)]
-            parts.append(words["pulses"].format(n=settings.pulses))
+            if settings.pulses > 1:  # pulses are a TM7 setting; one pulse is the default
+                parts.append(words["pulses"].format(n=settings.pulses))
         case RiceCookerSettings():
             parts = [words["rice_cooker"]]
         case WarmUpSettings():
@@ -168,6 +169,8 @@ def _annotation(settings: StepSettings, slot: str):
     if isinstance(settings, ManualSettings):
         temperature = None
         if settings.temperature == "varoma":
+            # The editor saves {"value": "varoma", "unit": "C"}; cookidoo-api always drops the
+            # unit for Varoma, and Cookidoo accepts both
             temperature = CookidooTemperatureSetting("varoma", None)
         elif settings.temperature is not None:
             temperature = CookidooTemperatureSetting(settings.temperature, "C")
@@ -190,7 +193,9 @@ def _annotation(settings: StepSettings, slot: str):
             data["direction"] = "CCW" if settings.reverse else "CW"
             data["accessory"] = _ACCESSORIES[settings.accessory]
         case TurboSettings():
-            data = {"time": settings.time, "pulseCount": settings.pulses}
+            data = {"time": settings.time}
+            if settings.pulses > 1:  # TM7 only; the editor sends no pulseCount otherwise
+                data["pulseCount"] = settings.pulses
         case RiceCookerSettings():
             data = {}
         case WarmUpSettings():

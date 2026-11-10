@@ -1,0 +1,236 @@
+{
+  "_comment": "Steps built by the Cookidoo editor settings dialog (cr-tts-modal, pl-customer-recipes 1.174.12) on 20.10.2026 and accepted by PATCH /created-recipes. input is how the step is written for the MCP, expected what getInstructions() returned.",
+  "cases": [
+    {
+      "device": "TM6",
+      "input": "Teig Teig kneten/2 Min. fertig.",
+      "expected": {
+        "type": "STEP",
+        "text": "Teig Teig kneten \ue001/2 Min. fertig.",
+        "annotations": [
+          {
+            "type": "MODE",
+            "name": "dough",
+            "data": {
+              "time": 120
+            },
+            "position": {
+              "offset": 5,
+              "length": 20
+            }
+          }
+        ]
+      }
+    },
+    {
+      "device": "TM6",
+      "input": "Zerkleinern Turbo/1 Sek. fertig.",
+      "expected": {
+        "type": "STEP",
+        "text": "Zerkleinern Turbo \ue00b/1 Sek. fertig.",
+        "annotations": [
+          {
+            "type": "MODE",
+            "name": "turbo",
+            "data": {
+              "time": 1
+            },
+            "position": {
+              "offset": 12,
+              "length": 14
+            }
+          }
+        ]
+      }
+    },
+    {
+      "device": "TM6",
+      "input": "Fein P\u00fcrieren/1 Min./Stufe 8 fertig.",
+      "expected": {
+        "type": "STEP",
+        "text": "Fein P\u00fcrieren \ue01e/1 Min. fertig.",
+        "annotations": [
+          {
+            "type": "MODE",
+            "name": "blend",
+            "data": {
+              "speed": "8",
+              "time": 60
+            },
+            "position": {
+              "offset": 5,
+              "length": 17
+            }
+          }
+        ]
+      }
+    },
+    {
+      "device": "TM6",
+      "input": "Suppe Erw\u00e4rmen/65\u00b0C/Stufe 1 fertig.",
+      "expected": {
+        "type": "STEP",
+        "text": "Suppe Erw\u00e4rmen \ue019/65\u00b0C fertig.",
+        "annotations": [
+          {
+            "type": "MODE",
+            "name": "warm_up",
+            "data": {
+              "speed": "1",
+              "temperature": {
+                "value": "65",
+                "unit": "C"
+              }
+            },
+            "position": {
+              "offset": 6,
+              "length": 15
+            }
+          }
+        ]
+      }
+    },
+    {
+      "device": "TM6",
+      "input": "Reis [Reis kochen] fertig.",
+      "expected": {
+        "type": "STEP",
+        "text": "Reis Reis kochen \ue00d fertig.",
+        "annotations": [
+          {
+            "type": "MODE",
+            "name": "rice_cooker",
+            "data": {},
+            "position": {
+              "offset": 5,
+              "length": 13
+            }
+          }
+        ]
+      }
+    },
+    {
+      "device": "TM6",
+      "input": "Gem\u00fcse 20 Min./Varoma/Linkslauf/Stufe 1 fertig.",
+      "expected": {
+        "type": "STEP",
+        "text": "Gem\u00fcse 20 Min./Varoma/\ue003/Stufe 1 fertig.",
+        "annotations": [
+          {
+            "type": "TTS",
+            "data": {
+              "speed": "1",
+              "direction": "CCW",
+              "time": 1200,
+              "temperature": {
+                "value": "varoma",
+                "unit": "C"
+              }
+            },
+            "position": {
+              "offset": 7,
+              "length": 24
+            }
+          }
+        ]
+      }
+    },
+    {
+      "device": "TM7",
+      "input": "Gem\u00fcse Dampfgaren/20 Min./Stufe 1/Linkslauf/im Gareinsatz fertig.",
+      "expected": {
+        "type": "STEP",
+        "text": "Gem\u00fcse Dampfgaren \ue008/20 Min. fertig.",
+        "annotations": [
+          {
+            "type": "MODE",
+            "name": "steaming",
+            "data": {
+              "speed": "1",
+              "direction": "CCW",
+              "time": 1200,
+              "accessory": "SimmeringBasket"
+            },
+            "position": {
+              "offset": 7,
+              "length": 20
+            }
+          }
+        ]
+      }
+    },
+    {
+      "device": "TM7",
+      "input": "Zwiebeln Anbraten/10 Min./160\u00b0C/Intensiv fertig.",
+      "expected": {
+        "type": "STEP",
+        "text": "Zwiebeln Anbraten \ue026 fertig.",
+        "annotations": [
+          {
+            "type": "MODE",
+            "name": "browning",
+            "data": {
+              "temperature": {
+                "value": "160",
+                "unit": "C"
+              },
+              "time": 600,
+              "power": "Intense"
+            },
+            "position": {
+              "offset": 9,
+              "length": 10
+            }
+          }
+        ]
+      }
+    },
+    {
+      "device": "TM7",
+      "input": "N\u00fcsse Turbo/1 Sek./3x fertig.",
+      "expected": {
+        "type": "STEP",
+        "text": "N\u00fcsse Turbo \ue00b/1 Sek. fertig.",
+        "annotations": [
+          {
+            "type": "MODE",
+            "name": "turbo",
+            "data": {
+              "time": 1,
+              "pulseCount": 3
+            },
+            "position": {
+              "offset": 6,
+              "length": 14
+            }
+          }
+        ]
+      }
+    },
+    {
+      "device": "TM7",
+      "input": "Suppe Erw\u00e4rmen/70\u00b0C/Sanftr\u00fchrstufe fertig.",
+      "expected": {
+        "type": "STEP",
+        "text": "Suppe Erw\u00e4rmen \ue019/70\u00b0C fertig.",
+        "annotations": [
+          {
+            "type": "MODE",
+            "name": "warm_up",
+            "data": {
+              "speed": "soft",
+              "temperature": {
+                "value": "70",
+                "unit": "C"
+              }
+            },
+            "position": {
+              "offset": 6,
+              "length": 15
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -22,14 +22,15 @@ Exemple d'une bonne instruction :
 "Ajouter l'huile d'olive et faire revenir 3 min / 120°C / sens inverse 🔄 / vitesse 1."
 
 Réglages préremplis : dans generate_recipe_structure, une étape qui utilise le Thermomix est un objet et non du texte. Son texte contient un repère {settings} par réglage ; le serveur y écrit le réglage (« 3 min/120°C/vitesse 1 », « Pétrin/2 min »…) et le préremplit sur le Thermomix. Le champ "mode" de chaque réglage choisit ses champs (les valeurs autorisées sont dans le schéma de l'outil) :
-- manuel (par défaut) : durée en secondes, température facultative ("37" à "120" °C ou "varoma"), vitesse ("soft" pour la vitesse mijotage, ou "0.5" à "10"), sens inverse ;
-- "dough" (pétrin) : durée ;
-- "browning" (rissolage, TM6/TM7) : durée (30 min max), température "140" à "160", puissance "gentle" ou "intense" ;
-- "steaming" (cuisson vapeur) : durée, vitesse jusqu'à "5", sens inverse, accessoire ("varoma", "simmering_basket", "varoma_and_simmering_basket") ;
-- "turbo" : durée 0.5, 1 ou 2 s, nombre d'impulsions (1 à 10) ;
-- "rice_cooker" : aucun réglage ;
-- "warm_up" (réchauffage) : température et vitesse, sans durée ;
-- "blend" (mixage) : durée et vitesse.
+- manuel (par défaut, tous les Thermomix) : durée en secondes (99 min max), température facultative ("37" à "120" °C, ou "varoma" sur le TM6 uniquement), vitesse ("soft" pour la vitesse mijotage, ou "0.5" à "10" ; au plus "6" avec une température), sens inverse ;
+- "dough" (pétrin, TM6/TM7) : durée, 20 min max ;
+- "browning" (rissolage, TM7 uniquement) : durée (30 min max), température "140" à "160", puissance "gentle" ou "intense" ;
+- "steaming" (cuisson vapeur, TM7 uniquement) : durée (99 min max), vitesse jusqu'à "5", sens inverse, accessoire ("varoma", "simmering_basket", "varoma_and_simmering_basket") ;
+- "turbo" (TM6/TM7) : durée 0.5, 1 ou 2 s ; nombre d'impulsions de 1 à 9 sur le TM7 uniquement ;
+- "rice_cooker" (TM6/TM7) : aucun réglage ;
+- "warm_up" (réchauffage, TM6/TM7) : température "37" à "90" et vitesse "soft", "1" ou "2", sans durée ;
+- "blend" (mixage, TM6/TM7) : durée de 10 s à 5 min et vitesse "6" à "8".
+Le TM5 n'accepte que les réglages manuels. Le serveur vérifie chaque réglage pour l'appareil visé et indique ce qui est autorisé ; get_thermomix_modes le détaille par appareil.
 Pour un mode, le serveur écrit déjà son nom (« Pétrin/2 min ») : écrire « puis lancer {settings} » plutôt que « pétrir {settings} ».
 Le champ "ingredients" relie des mots du texte à une ligne de la liste d'ingrédients (première occurrence). Exemple :
 {"text": "Ajouter l'oignon et l'huile d'olive, puis faire revenir {settings}.", "settings": [{"time": 180, "temperature": "120", "speed": "1", "reverse": true}], "ingredients": [{"text": "l'oignon", "ingredient": "1 oignon, coupé en deux"}]}
@@ -42,7 +43,7 @@ Tu dois utiliser les outils MCP que je t'ai fournis dans l'ordre suivant. Attend
 
 Utilise l'outil connect_to_cookidoo pour te connecter à mon compte.
 
-Confirme-moi que la connexion est réussie.
+Confirme-moi que la connexion est réussie et demande-moi pour quel Thermomix est la recette (TM5, TM6 ou TM7), sauf si je l'ai déjà dit. Appelle get_thermomix_modes avec cet appareil, et passe le même appareil (device) à generate_recipe_structure et upload_custom_recipe.
 
 Étape 2 : Inspiration (Optionnel mais recommandé)
 

@@ -27,7 +27,8 @@ async def get_account_info() -> str:
             f"Subscription expires: {one_line(subscription.expires) or '?'}",
         ]
     lines.append(f"Devices: {', '.join(d.type.value for d in devices) or 'none linked'}")
-    lines.append(f"Device used for new recipes: {svc.settings.device.value}")
+    device, source = await svc.resolve_device()
+    lines.append(f"Device for new recipes: {device} ({source})")
     return "\n".join(lines)
 
 

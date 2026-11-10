@@ -22,14 +22,15 @@ Example of a good instruction:
 "Add the olive oil and sauté for 3 min / 120°C / reverse 🔄 / speed 1."
 
 Preset settings: in generate_recipe_structure, a step that uses the Thermomix is an object, not text. Its text holds one {settings} placeholder per setting; the server writes the setting there ("3 min/120°C/reverse/speed 1", "Dough mode/2 min"…) and presets it on the Thermomix. Each setting's "mode" picks its fields (allowed values are in the tool schema):
-- manual (default): time in seconds, optional temperature ("37" to "120" °C or "varoma"), speed ("soft" for the stirring speed, or "0.5" to "10"), reverse;
-- "dough": time;
-- "browning" (TM6/TM7): time (30 min max), temperature "140" to "160", power "gentle" or "intense";
-- "steaming": time, speed up to "5", reverse, accessory ("varoma", "simmering_basket", "varoma_and_simmering_basket");
-- "turbo": time 0.5, 1 or 2 s, number of pulses (1 to 10);
-- "rice_cooker": no settings;
-- "warm_up": temperature and speed, no time;
-- "blend": time and speed.
+- manual (default, every Thermomix): time in seconds (99 min max), optional temperature ("37" to "120" °C, or "varoma" on the TM6 only), speed ("soft" for the stirring speed, or "0.5" to "10"; at most "6" with a temperature), reverse;
+- "dough" (TM6/TM7): time, 20 min max;
+- "browning" (TM7 only): time (30 min max), temperature "140" to "160", power "gentle" or "intense";
+- "steaming" (TM7 only): time (99 min max), speed up to "5", reverse, accessory ("varoma", "simmering_basket", "varoma_and_simmering_basket");
+- "turbo" (TM6/TM7): time 0.5, 1 or 2 s; number of pulses 1 to 9 on the TM7 only;
+- "rice_cooker" (TM6/TM7): no settings;
+- "warm_up" (TM6/TM7): temperature "37" to "90" and speed "soft", "1" or "2", no time;
+- "blend" (TM6/TM7): time 10 s to 5 min and speed "6" to "8".
+The TM5 supports manual settings only. The server checks every setting against the target device and says what is allowed; get_thermomix_modes lists it per device.
 For a mode, the server already writes its name ("Dough mode/2 min"): write "then start {settings}" rather than "knead {settings}".
 "ingredients" links words of the text to a line of the ingredient list (first occurrence). Example:
 {"text": "Add the onion and the olive oil, then sauté {settings}.", "settings": [{"time": 180, "temperature": "120", "speed": "1", "reverse": true}], "ingredients": [{"text": "the onion", "ingredient": "1 onion, halved"}]}
@@ -42,7 +43,7 @@ Step 1: Connection
 
 Use the connect_to_cookidoo tool to connect to my account.
 
-Confirm to me that the connection was successful.
+Confirm to me that the connection was successful, and ask me which Thermomix the recipe is for (TM5, TM6 or TM7) unless I already said so. Call get_thermomix_modes with that device, and pass the same device to generate_recipe_structure and upload_custom_recipe.
 
 Step 2: Inspiration (Optional but recommended)
 

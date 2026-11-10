@@ -129,6 +129,23 @@ editor limits" cannot both hold.
    TM6 limits, and no modes. Alternative: drop TM5.
 6. **Step text**: keep words (§4), no icon glyphs. *(Recommended.)*
 
+## 7a. Decisions (2026-11-10, repository owner)
+
+1. **Enforce the editor limits per device** (option a).
+2. Reading stays lenient; recipes are only checked when saved again.
+3. `pulseCount` only for more than one pulse. **Varoma `unit`:** not done. cookidoo-api's
+   serializer always drops the unit for Varoma (`Cookidoo._temperature_to_json`); upstream
+   v1.1.0 uploaded Varoma steps without it, so Cookidoo accepts both. A test documents the
+   library behaviour; a change belongs in cookidoo-api.
+4. Default device as proposed; with TM6 and TM7 linked: **TM6 rules**.
+5. **TM5: manual settings only**, with the TM6 limits.
+6. Step text stays in words.
+
+Keeping the per-mode limits current: the live catalog covers modes, TM7-only marks and value
+lists at runtime. The per-mode ranges come from the editor's JavaScript and stay a snapshot;
+the Phase 5 scheduled live check should compare the editor page with the snapshot and record
+the editor's script version, and open an issue when either changes.
+
 ## 8. Plan once decided
 
 - `devices.py`: `DEVICES`, a `ModeRule` table (from tobilektri, MIT, credited), allowed values

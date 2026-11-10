@@ -31,7 +31,7 @@ cp .env.example .env   # then fill in your Cookidoo credentials
 | `COOKIDOO_PASSWORD` | — | Cookidoo account password (required) |
 | `COOKIDOO_COUNTRY` | `fr` | Cookidoo site country code (`fr`, `de`, `gb`, `es`, …) |
 | `COOKIDOO_LANGUAGE` | `fr-FR` | Site language (e.g. `de-DE`); also the language guided-cooking settings are written in |
-| `COOKIDOO_DEVICE` | `TM6` | Thermomix model set on created recipes (`TM5`, `TM6`, `TM7`) |
+| `COOKIDOO_DEVICE` | — (detected) | Thermomix recipes are written for (`TM5`, `TM6`, `TM7`). Unset: from the devices linked to the account (TM6 rules if a TM6 is among them), else TM6 |
 | `COOKIDOO_IMAGE_DIRS` | — (upload disabled) | Folders `upload_custom_recipe_image` may read images from, separated by `:` (`;` on Windows) |
 | `COOKIDOO_MCP_TRANSPORT` | `stdio` | `stdio` or `http` (same as `--transport`) |
 | `COOKIDOO_MCP_HOST` | `127.0.0.1` | HTTP bind address. Any non-loopback address requires `COOKIDOO_MCP_TOKEN` |
@@ -115,8 +115,8 @@ safety layer on top of your client's approval prompt.
 | **Custom recipes** | | |
 | `list_custom_recipes` | read | List the custom recipes on your account |
 | `get_custom_recipe` | read | Get a custom recipe as editable JSON |
-| `generate_recipe_structure` | read | Validate a new recipe and return its JSON |
-| `upload_custom_recipe` | write | Create a custom recipe from that JSON |
+| `generate_recipe_structure` | read | Validate a new recipe for a Thermomix (TM5/TM6/TM7) and return its JSON |
+| `upload_custom_recipe` | write | Create a custom recipe from that JSON, for a Thermomix |
 | `update_custom_recipe` | destructive | Replace an existing custom recipe with that JSON |
 | `copy_recipe_to_custom` | write | Copy a catalogue recipe into a new custom recipe, to adapt it |
 | `upload_custom_recipe_image` | destructive | Set a custom recipe's photo from a local image (see `COOKIDOO_IMAGE_DIRS`) |
@@ -141,6 +141,8 @@ safety layer on top of your client's approval prompt.
 | `create_collection` | write | Create a custom collection |
 | `delete_collection` † | destructive | Delete a custom collection (its recipes are kept) |
 | `add_to_collection` / `remove_from_collection` | write / destructive | Add or remove recipes in a custom collection |
+| **Thermomix** | | |
+| `get_thermomix_modes` | read | Settings and modes a device supports, with limits and examples |
 | **Account** | | |
 | `connect_to_cookidoo` | read | Check the configuration / force a fresh login (optional, tools log in automatically) |
 | `get_account_info` | read | User, Cookidoo site, subscription and devices |
@@ -162,23 +164,34 @@ on the Thermomix are the same in every language.
 }
 ```
 
-A setting's `mode` selects its fields. The limits are those the Cookidoo API accepts:
+A setting's `mode` selects its fields. The limits are those of the Cookidoo recipe editor
+(snapshot of cookidoo.de, 2026-10-20), and they depend on the Thermomix the recipe is for:
 
-| `mode` | Fields | Written as (fr) | Written as (de) |
-| --- | --- | --- | --- |
-| `manual` (default) | `time` (s, up to 99 h 59), `temperature` (optional: `"37"`…`"95"` by 5, `"98"`, `"100"`…`"120"` by 5, or `"varoma"`), `speed`, `reverse` | `3 min/120°C/vitesse 1` | `3 Min./120°C/Stufe 1` |
-| `dough` | `time` | `Pétrin/2 min` | `Teig kneten/2 Min.` |
-| `browning` | `time` (up to 30 min), `temperature` (`"140"`…`"160"` by 5), `power` (`gentle`, `intense`) | `Rissolage/5 min/160°C/intense` | `Anbraten/5 Min./160°C/Intensiv` |
-| `steaming` | `time`, `speed` (up to `"5"`), `reverse`, `accessory` (`varoma`, `simmering_basket`, `varoma_and_simmering_basket`) | `Cuisson vapeur/20 min/Varoma/vitesse 1` | `Dampfgaren/20 Min./im Varoma/Stufe 1` |
-| `turbo` | `time` (0.5, 1 or 2 s), `pulses` (1 to 10) | `Turbo/0.5 sec/3 fois` | `Turbo/0.5 Sek./3x` |
-| `rice_cooker` | none | `Rice cooker` | `Reis kochen` |
-| `warm_up` | `temperature`, `speed` (no time: Cookidoo drops it) | `Réchauffage/65°C/vitesse 2` | `Erwärmen/65°C/Stufe 2` |
-| `blend` | `time`, `speed` | `Mixage/1 min/vitesse 10` | `Pürieren/1 Min./Stufe 10` |
+| `mode` | Devices | Fields and limits | Written as (fr) | Written as (de) |
+| --- | --- | --- | --- | --- |
+| `manual` (default) | TM5, TM6, TM7 | `time` (1 s – 99 min), `temperature` (optional: `"37"`…`"95"` by 5, `"98"`, `"100"`…`"120"` by 5, or `"varoma"` on the TM6 only), `speed` (at most `"6"` with a temperature), `reverse` | `3 min/120°C/vitesse 1` | `3 Min./120°C/Stufe 1` |
+| `dough` | TM6, TM7 | `time` (up to 20 min) | `Pétrin/2 min` | `Teig kneten/2 Min.` |
+| `browning` | TM7 | `time` (up to 30 min), `temperature` (`"140"`…`"160"` by 5), `power` (`gentle`, `intense`) | `Rissolage/5 min/160°C/intense` | `Anbraten/5 Min./160°C/Intensiv` |
+| `steaming` | TM7 | `time` (up to 99 min), `speed` (up to `"5"`), `reverse`, `accessory` (`varoma`, `simmering_basket`, `varoma_and_simmering_basket`) | `Cuisson vapeur/20 min/Varoma/vitesse 1` | `Dampfgaren/20 Min./im Varoma/Stufe 1` |
+| `turbo` | TM6, TM7 | `time` (0.5, 1 or 2 s), `pulses` (1 to 9, TM7 only) | `Turbo/0.5 sec/3 fois` | `Turbo/0.5 Sek./3x` |
+| `rice_cooker` | TM6, TM7 | none | `Rice cooker` | `Reis kochen` |
+| `warm_up` | TM6, TM7 | `temperature` (`"37"`…`"90"`), `speed` (`"soft"`, `"1"`, `"2"`; no time: Cookidoo drops it) | `Réchauffage/65°C/vitesse 2` | `Erwärmen/65°C/Stufe 2` |
+| `blend` | TM6, TM7 | `time` (10 s – 5 min), `speed` (`"6"`…`"8"`) | `Mixage/1 min/vitesse 8` | `Pürieren/1 Min./Stufe 8` |
 
 `speed` is `"soft"` (stirring speed, `Sanftrührstufe`) or `"0.5"` to `"10"` by halves
-(written `Stufe 0,5` in German). Cookidoo has no other
-mode for custom recipes (sous-vide, slow cooking, fermentation… only exist in catalogue
-recipes). It does not check that the modes exist on the devices listed for the recipe.
+(written `Stufe 0,5` in German). Cookidoo has no other mode for custom recipes (sous-vide,
+slow cooking, fermentation… only exist in catalogue recipes).
+
+**Target device.** `generate_recipe_structure`, `upload_custom_recipe` and
+`update_custom_recipe` take an optional `device` (`TM5`, `TM6`, `TM7`) and refuse settings that
+device does not support, naming the allowed values. Without it: for an update, the recipe's
+own devices; then `COOKIDOO_DEVICE`; then the devices linked to the account (TM6 rules if a
+TM6 is among them, as TM6-valid steps also run on a TM7); then TM6. Times off the editor's
+grid (10 s steps up to 5 min, 30 s up to 20 min, then whole minutes) only give a warning.
+Which modes exist and which are TM7-only is read from the Cookidoo recipe editor of your
+account (cached for an hour), with the built-in snapshot as fallback; the tool output says
+which was used. Recipes already on Cookidoo are always readable, whatever their values, and
+are only checked when saved again.
 
 Modes are written with their name, so the text should not repeat it ("then start
 {settings}" rather than "knead {settings}").

@@ -14,11 +14,13 @@ on disk, write them with mode 0600 under the user's config directory, never in t
 
 import asyncio
 import os
+import re
+import time
 from dataclasses import dataclass, replace
 from datetime import date
 from typing import Any, cast
 
-from aiohttp import ClientSession
+from aiohttp import ClientSession, ClientTimeout
 from cookidoo_api import (
     Cookidoo,
     CookidooAdditionalItem,
@@ -44,11 +46,21 @@ from cookidoo_api.helpers import (
 )
 from cookidoo_api.types import CookidooCalendarDay
 from dotenv import load_dotenv
+from yarl import URL
 
 import recipe_images
+from devices import (
+    BUILTIN_CATALOG,
+    DEFAULT_DEVICE,
+    DEVICES,
+    MAX_EDITOR_HTML,
+    Device,
+    ModeCatalog,
+    parse_editor_html,
+)
 from guided import to_instruction
 from schemas import CustomRecipe
-from security import register_secret
+from security import redact, register_secret
 
 
 @dataclass(frozen=True)
@@ -59,7 +71,21 @@ class CookidooSettings:
     password: str
     country: str = "fr"
     language: str = "fr-FR"
-    device: ThermomixMachineType = ThermomixMachineType.TM6
+    device: Device | None = None  # COOKIDOO_DEVICE; None: detect from the account
+
+
+CATALOG_TTL = 3600  # seconds a mode catalog read from Cookidoo is reused
+
+
+def pick_device(devices: list[str]) -> Device | None:
+    """
+    The device whose rules a recipe for these devices must follow: TM6 when a TM6 is among
+    them (TM6-valid steps also run on a TM7), else TM7, else TM5.
+    """
+    for device in ("TM6", "TM7", "TM5"):
+        if device in devices:
+            return device
+    return None
 
 
 def load_cookidoo_settings() -> CookidooSettings:
@@ -84,19 +110,16 @@ def load_cookidoo_settings() -> CookidooSettings:
 
     register_secret(password)
 
-    device = os.getenv("COOKIDOO_DEVICE", "TM6").upper()
-    try:
-        machine = ThermomixMachineType(device)
-    except ValueError:
-        valid = ", ".join(m.value for m in ThermomixMachineType)
-        raise ValueError(f"Unknown COOKIDOO_DEVICE '{device}'. Use one of: {valid}") from None
+    device = (os.getenv("COOKIDOO_DEVICE") or "").strip().upper() or None
+    if device is not None and device not in DEVICES:
+        raise ValueError(f"Unknown COOKIDOO_DEVICE '{device}'. Use one of: {', '.join(DEVICES)}")
 
     return CookidooSettings(
         email=email,
         password=password,
         country=os.getenv("COOKIDOO_COUNTRY", "fr").lower(),
         language=os.getenv("COOKIDOO_LANGUAGE", "fr-FR"),
-        device=machine,
+        device=cast(Device | None, device),
     )
 
 
@@ -120,6 +143,8 @@ class CookidooService:
         self._api_client: Cookidoo | None = None
         self._session: ClientSession | None = None
         self._lock = asyncio.Lock()
+        self._catalog: ModeCatalog | None = None
+        self._catalog_time = 0.0
 
     async def login(self) -> Cookidoo:
         """
@@ -240,8 +265,10 @@ class CookidooService:
         ]
         return recipe, list(steps)
 
-    async def create_custom_recipe(self, recipe: CustomRecipe) -> CookidooCustomRecipe:
-        """Create a brand new custom recipe on the user's account."""
+    async def create_custom_recipe(
+        self, recipe: CustomRecipe, device: Device = DEFAULT_DEVICE
+    ) -> CookidooCustomRecipe:
+        """Create a brand new custom recipe on the user's account, for the given device."""
         api = await self.client()
         return await api.create_custom_recipe(
             CookidooCreateCustomRecipe(
@@ -253,7 +280,7 @@ class CookidooService:
                 serving_size=recipe.servings,
                 active_time=recipe.prep_time * 60,
                 total_time=recipe.total_time * 60,
-                tools=[self.settings.device],
+                tools=[ThermomixMachineType(device)],
                 hints=recipe.hints or [],
             )
         )
@@ -301,6 +328,81 @@ class CookidooService:
         return await recipe_images.upload_recipe_image(
             api, self._session, recipe_id, jpeg, filename
         )
+
+    # --- Devices and modes ------------------------------------------------------------------
+
+    async def resolve_device(
+        self, explicit: Device | None = None, recipe_id: str | None = None
+    ) -> tuple[Device, str]:
+        """
+        The device whose rules apply, and where that choice came from: the explicit device,
+        else the recipe's own devices (when updating), else COOKIDOO_DEVICE, else the devices
+        linked to the account, else TM6. Cookidoo errors fall back to the next source.
+        """
+        if explicit:
+            return explicit, "given"
+        if recipe_id:
+            try:
+                recipe, _ = await self.get_custom_recipe(recipe_id)
+                tools = [getattr(t, "value", str(t)).upper() for t in recipe.tools or []]
+                if device := pick_device(tools):
+                    return device, "the recipe's devices"
+            except Exception:
+                pass
+        if self.settings.device:
+            return self.settings.device, "COOKIDOO_DEVICE"
+        try:
+            linked = [d.type.value for d in await self.get_devices()]
+            if device := pick_device(linked):
+                return device, "the devices linked to the account"
+        except Exception:
+            return DEFAULT_DEVICE, "default (linked devices could not be read)"
+        return DEFAULT_DEVICE, "default"
+
+    async def get_mode_catalog(self, recipe_id: str | None = None) -> ModeCatalog:
+        """
+        The modes Cookidoo's recipe editor offers, read from the editor page of one of the
+        user's own recipes and cached for an hour. Never raises: on any problem the built-in
+        catalog is returned, with a note saying why.
+        """
+        if self._catalog and time.monotonic() - self._catalog_time < CATALOG_TTL:
+            return self._catalog
+        try:
+            api = await self.client()
+            if recipe_id is None:
+                recipes = await api.list_custom_recipes()
+                if not recipes:
+                    return replace(
+                        BUILTIN_CATALOG,
+                        note="built-in list: no own recipe yet to read the editor from",
+                    )
+                recipe_id = recipes[0].id
+            if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", recipe_id):
+                raise ValueError("unexpected recipe ID")
+            assert self._session is not None
+            url = (
+                URL(api.localization.url).origin()
+                / "created-recipes"
+                / (api.localization.language)
+                / recipe_id
+                / "edit"
+                / "ingredients-and-preparation-steps"
+            )
+            headers = {**api._api_headers, "ACCEPT": "text/html"}
+            async with self._session.get(
+                url, headers=headers, timeout=ClientTimeout(total=20), allow_redirects=False
+            ) as response:
+                if response.status != 200:
+                    raise RuntimeError(f"editor page returned {response.status}")
+                body = await response.content.read(MAX_EDITOR_HTML + 1)
+            catalog = parse_editor_html(body.decode("utf-8", errors="replace"))
+        except Exception as e:
+            return replace(
+                BUILTIN_CATALOG,
+                note=redact(f"built-in list: the Cookidoo editor could not be read ({e})"),
+            )
+        self._catalog, self._catalog_time = catalog, time.monotonic()
+        return catalog
 
     # --- Account ---------------------------------------------------------------------------
 
