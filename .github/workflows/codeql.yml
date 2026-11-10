@@ -29,6 +29,10 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: none
+          # Tests deliberately log fake secrets to check that they are redacted
+          config: |
+            paths-ignore:
+              - tests
       - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           category: /language:${{ matrix.language }}
