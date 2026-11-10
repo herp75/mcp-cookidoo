@@ -1,0 +1,15 @@
+{
+  "days": [
+    {"id": "2026-11-09", "title": "Monday", "recipes": [
+      {"id": "r100001", "name": "Test Tomato Soup", "total_time": 1800, "thumbnail": null,
+       "image": null, "url": "https://cookidoo.example/recipes/recipe/en-GB/r100001"}],
+     "customer_recipe_ids": []},
+    {"id": "2026-11-10", "title": "Tuesday", "recipes": [
+      {"id": "01TESTRECIPE00000000000001", "name": "My Test Pasta", "total_time": 1200,
+       "thumbnail": null, "image": null,
+       "url": "https://cookidoo.example/created-recipes/en-GB/01TESTRECIPE00000000000001",
+       "is_custom": true}],
+     "customer_recipe_ids": ["01TESTRECIPE00000000000001", "01TESTRECIPEMISSING00000001"]},
+    {"id": "2026-11-11", "title": "Wednesday", "recipes": [], "customer_recipe_ids": []}
+  ]
+}

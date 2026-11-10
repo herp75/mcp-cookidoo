@@ -1,0 +1,14 @@
+{
+  "user": {"id": "test-user-0001", "username": "Test Cook", "description": null, "picture": null},
+  "subscription": {
+    "active": true,
+    "expires": "2027-01-31T23:59:59Z",
+    "start_date": "2026-02-01T00:00:00Z",
+    "status": "ACTIVE",
+    "subscription_level": "PREMIUM",
+    "subscription_source": "WEB",
+    "type": "REGULAR",
+    "extended_type": "REGULAR"
+  },
+  "devices": ["TM6", "TM7"]
+}

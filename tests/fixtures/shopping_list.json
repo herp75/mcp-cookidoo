@@ -1,0 +1,14 @@
+{
+  "recipes": [
+    {"id": "r100001", "name": "Test Tomato Soup", "thumbnail": null, "image": null,
+     "url": "https://cookidoo.example/recipes/recipe/en-GB/r100001"}
+  ],
+  "ingredients": [
+    {"id": "ing-0001", "name": "tomatoes", "is_owned": false, "description": "500 g"},
+    {"id": "ing-0002", "name": "onion", "is_owned": true, "description": "1"}
+  ],
+  "additional": [
+    {"id": "add-0001", "name": "milk", "is_owned": false},
+    {"id": "add-0002", "name": "coffee", "is_owned": true}
+  ]
+}

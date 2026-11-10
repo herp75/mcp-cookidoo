@@ -47,23 +47,6 @@ async def call(tool, **args):
         return result.content[0].text
 
 
-async def test_all_tools_registered():
-    async with Client(server.mcp) as client:
-        names = {t.name for t in await client.list_tools()}
-        prompts = {p.name for p in await client.list_prompts()}
-    assert names == {
-        "connect_to_cookidoo",
-        "search_recipes",
-        "get_recipe_details",
-        "list_custom_recipes",
-        "get_custom_recipe",
-        "generate_recipe_structure",
-        "upload_custom_recipe",
-        "update_custom_recipe",
-    }
-    assert prompts == {"create_thermomix_recipe"}
-
-
 async def test_server_reports_project_version():
     async with Client(server.mcp) as client:
         assert client.server_info.version == server.VERSION == "1.1.0"

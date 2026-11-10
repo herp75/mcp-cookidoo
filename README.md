@@ -8,7 +8,11 @@ An MCP (Model Context Protocol) server for interacting with the Thermomix Cookid
 
 - **Recipe Search**: Find recipes by keywords and/or ingredients, with a maximum total time
 - **Recipe Details**: Fetch ingredients, steps and times of any Cookidoo recipe
-- **Custom Recipes**: List, read, create and update the recipes on your own account
+- **Custom Recipes**: List, read, create, update and delete the recipes on your own account
+- **Shopping List**: Add recipes and items, tick them off, rename, remove or clear
+- **Meal Plan**: See the week, plan recipes on a day or remove them
+- **Collections**: List, follow and create collections, add and remove their recipes
+- **Account**: Subscription and linked Thermomix devices
 - **Guided Cooking**: Steps can carry Thermomix settings (time, temperature, speed, reverse), preset on the machine
 - **Guided Prompt**: `create_thermomix_recipe` walks the assistant through writing a proper Thermomix recipe (EN / FR)
 
@@ -98,16 +102,45 @@ uv run fastmcp dev inspector fastmcp.json           # MCP Inspector
 
 ## Available Tools
 
-| Tool | Description |
-| --- | --- |
-| `connect_to_cookidoo` | Check the configuration / force a fresh login (optional, tools log in automatically) |
-| `search_recipes` | Search recipes by query, ingredients and max total time |
-| `get_recipe_details` | Get ingredients, steps and times of a recipe by ID |
-| `list_custom_recipes` | List the custom recipes on your account |
-| `get_custom_recipe` | Get a custom recipe as editable JSON |
-| `generate_recipe_structure` | Validate a new recipe and return its JSON |
-| `upload_custom_recipe` | Create a custom recipe from that JSON |
-| `update_custom_recipe` | Replace an existing custom recipe with that JSON |
+Type: **read** = read-only; **write** = changes the account; **destructive** = deletes or
+overwrites data. Tools marked † refuse to run unless called with `confirm=true`, as a second
+safety layer on top of your client's approval prompt.
+
+| Tool | Type | Description |
+| --- | --- | --- |
+| **Recipes** | | |
+| `search_recipes` | read | Search recipes by query, ingredients and max total time |
+| `get_recipe_details` | read | Get ingredients, steps and times of a recipe by ID |
+| **Custom recipes** | | |
+| `list_custom_recipes` | read | List the custom recipes on your account |
+| `get_custom_recipe` | read | Get a custom recipe as editable JSON |
+| `generate_recipe_structure` | read | Validate a new recipe and return its JSON |
+| `upload_custom_recipe` | write | Create a custom recipe from that JSON |
+| `update_custom_recipe` | destructive | Replace an existing custom recipe with that JSON |
+| `delete_custom_recipe` † | destructive | Permanently delete a custom recipe |
+| **Shopping list** | | |
+| `get_shopping_list` | read | Recipes, ingredients and hand-added items, with ticked state and IDs |
+| `add_recipes_to_shopping_list` | write | Add the ingredients of catalogue and/or custom recipes |
+| `remove_recipes_from_shopping_list` | destructive | Remove recipes and their ingredients |
+| `add_shopping_list_items` | write | Add items by hand ("milk", "2 lemons") |
+| `edit_shopping_list_items` | destructive | Rename items added by hand |
+| `mark_shopping_list_items` | write | Tick items off, or put them back |
+| `remove_shopping_list_items` | destructive | Delete items added by hand |
+| `clear_shopping_list` † | destructive | Empty the whole shopping list |
+| **Meal plan** | | |
+| `get_meal_plan_week` | read | The planned recipes of the week containing a day |
+| `add_to_meal_plan` | write | Plan catalogue and/or custom recipes on a day |
+| `remove_from_meal_plan` | destructive | Remove recipes from a day (the recipes are kept) |
+| **Collections** | | |
+| `list_collections` | read | Your own and followed collections with their recipes (paginated) |
+| `follow_collection` / `unfollow_collection` | write / destructive | Follow or unfollow a Cookidoo collection |
+| `create_collection` | write | Create a custom collection |
+| `delete_collection` † | destructive | Delete a custom collection (its recipes are kept) |
+| `add_to_collection` / `remove_from_collection` | write / destructive | Add or remove recipes in a custom collection |
+| **Account** | | |
+| `connect_to_cookidoo` | read | Check the configuration / force a fresh login (optional, tools log in automatically) |
+| `get_account_info` | read | User, Cookidoo site, subscription and devices |
+| `list_devices` | read | Thermomix devices linked to the account |
 
 ## Recipe steps
 
