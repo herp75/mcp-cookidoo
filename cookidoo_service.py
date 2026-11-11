@@ -118,6 +118,7 @@ def load_cookidoo_settings() -> CookidooSettings:
         )
 
     register_secret(password)
+    register_secret(email)  # Vorwerk's login redirects put it into error messages
 
     device = (os.getenv("COOKIDOO_DEVICE") or "").strip().upper() or None
     if device is not None and device not in DEVICES:
