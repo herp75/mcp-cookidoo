@@ -1,0 +1,10 @@
+# Weekly Cookidoo backup: copy this file and cookidoo-backup.timer to ~/.config/systemd/user/,
+# adjust the path below, then: systemctl --user enable --now cookidoo-backup.timer
+[Unit]
+Description=Cookidoo backup (read-only)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/code/mcp-cookidoo/scripts/cookidoo-backup.sh %h/cookidoo-backup

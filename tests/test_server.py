@@ -336,6 +336,18 @@ def test_settings_from_env(monkeypatch):
         load_cookidoo_settings()
 
 
+def test_email_is_masked_in_errors(monkeypatch):
+    """Vorwerk's failed-login redirect carries the email in its query string."""
+    from security import redact
+
+    monkeypatch.setattr("cookidoo_service.load_dotenv", lambda: None)
+    monkeypatch.setenv("COOKIDOO_EMAIL", "someone@example.org")
+    monkeypatch.setenv("COOKIDOO_PASSWORD", "pa$$word-xyz")
+    load_cookidoo_settings()
+    error = "redirected: https://login.example/ciam/login?username=someone%40example.org&x=1"
+    assert "someone" not in redact(error) and "someone" not in redact("as someone@example.org")
+
+
 def _raw_step(text, *annotations):
     return {"type": "STEP", "text": text, "annotations": list(annotations)}
 

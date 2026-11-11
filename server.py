@@ -25,8 +25,8 @@ from starlette.middleware import Middleware
 import tools
 from cookidoo_service import CookidooService, load_cookidoo_settings
 from devices import BUILTIN_CATALOG, DEFAULT_DEVICE, Device, check_steps
-from guided import read_step, to_instruction
-from schemas import MAX_MINUTES, CustomRecipe, Step
+from guided import editable_recipe, to_instruction
+from schemas import CustomRecipe, Step
 from security import (
     BearerTokenMiddleware,
     check_http_config,
@@ -159,11 +159,6 @@ async def _check_device(
 
 def _minutes(seconds: int | None) -> str:
     return f"{round(seconds / 60)} min" if seconds else "?"
-
-
-def _whole_minutes(seconds: int | None) -> int:
-    """A time from Cookidoo, in seconds or missing, as the minutes CustomRecipe accepts."""
-    return min(max(1, round((seconds or 0) / 60)), MAX_MINUTES)
 
 
 def _strip_markup(text: str) -> str:
@@ -303,23 +298,7 @@ async def get_custom_recipe(recipe_id: str) -> str:
     except Exception as e:
         raise tool_error("Failed to get custom recipe", e) from e
 
-    steps, lost_in = [], []
-    for step, lost in map(read_step, instructions):
-        if lost:
-            lost_in.append(len(steps) + 1)
-        if step:
-            steps.append(step if isinstance(step, str) else step.model_dump())
-    total_time = _whole_minutes(r.total_time)
-    recipe = {
-        "name": r.name,
-        "ingredients": r.ingredients,
-        "steps": steps,
-        "servings": r.serving_size,
-        # Cookidoo may store an active time longer than the total; the upload refuses that
-        "prep_time": min(_whole_minutes(r.active_time), total_time),
-        "total_time": total_time,
-        "hints": r.hints or None,
-    }
+    recipe, lost_in = editable_recipe(r, instructions)
     warning = ""
     if lost_in:
         numbers = ", ".join(map(str, lost_in))

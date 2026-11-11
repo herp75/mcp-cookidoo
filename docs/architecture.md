@@ -17,6 +17,7 @@ short text for the model. Everything that talks to Cookidoo goes through the ser
 | `devices.py` | TM5/TM6/TM7 limits (`MODE_RULES`), `check_steps`, `ModeCatalog`, the editor-page parser |
 | `recipe_images.py` | Image path allowlist, validation and re-encoding, the signed Cloudinary upload |
 | `security.py` | Secret redaction (logs and errors), ID validation, HTTP bearer-token middleware, bind checks |
+| `backup.py` | Read-only backup to Markdown (`Backup`, renderers); uses `CookidooService` (`own_recipes_raw` with ETags, `catalogue_recipe_raw`, `all_collections`) and `guided.editable_recipe` |
 | `prompt*.md` | The `create_thermomix_recipe` prompt in English, French and German |
 
 ## Service and tools
