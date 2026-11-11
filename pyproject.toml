@@ -1,6 +1,6 @@
 [project]
 name = "cookidoo-mcp-server"
-version = "2.1.0"
+version = "2.2.0"
 description = "MCP server for interacting with the Thermomix Cookidoo platform"
 readme = "README.md"
 license = "MIT AND Apache-2.0"  # recipe_images.py: Apache-2.0, see NOTICE
