@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [2.2.1] - 2026-11-16
+
+### Security
+- Raised two indirect dependencies to their fixed versions: dnspython 2.9.2 (CVE-2026-128089,
+  memory exhaustion when parsing a malicious WKS record in text form; it comes with pydantic's
+  email validation) and opentelemetry-api 1.45.2 (CVE-2026-126360, slow regular expression on a
+  long `traceparent`; it comes with `mcp`). Cookidoo's answers reach neither: the server parses
+  no DNS zone text, and a `traceparent` only comes from the MCP client itself
+
 ## [2.2.0] - 2026-11-11
 
 ### Added

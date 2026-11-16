@@ -6,11 +6,11 @@
     "url": "https://github.com/herp75/mcp-cookidoo",
     "source": "github"
   },
-  "version": "2.2.0",
+  "version": "2.2.1",
   "packages": [
     {
       "registryType": "oci",
-      "identifier": "ghcr.io/herp75/mcp-cookidoo:2.2.0",
+      "identifier": "ghcr.io/herp75/mcp-cookidoo:2.2.1",
       "transport": {
         "type": "stdio"
       },
