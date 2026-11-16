@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.2.1] - 2026-11-16
+
 ### Security
 - Raised two indirect dependencies to their fixed versions: dnspython 2.9.2 (CVE-2026-128089,
   memory exhaustion when parsing a malicious WKS record in text form; it comes with pydantic's
