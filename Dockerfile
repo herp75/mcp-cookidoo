@@ -2,7 +2,7 @@
 # Alpine (musl): every compiled dependency in uv.lock ships musllinux wheels for amd64/arm64.
 
 # --- Build stage: resolve the locked dependencies into a virtualenv -----------------------
-FROM ghcr.io/astral-sh/uv:python3.12-alpine@sha256:aef1a1327a732e74892765e22fa528499eca3f828140a66ed46b2f8df51bd0dc AS build
+FROM ghcr.io/astral-sh/uv:python3.12-alpine@sha256:77f6e42a88636e1a4eb30d0a250aaba62226e93566df21855bc3a2709865b3be AS build
 
 WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_NO_CACHE=1 UV_PYTHON_DOWNLOADS=never
